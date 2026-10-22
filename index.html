@@ -76,8 +76,8 @@ const SEGMENT_MARKET=[{name:"Familien",share:.34,elasticity:1.05},{name:"Junge E
 function capacityOf(s,d){return Math.max(42000,90000+(d.staff-60)*1250+(s.assets.lift||0)*8000)}
 function appeal(t,segment,e){
  const d=t.pick,s=t.state;
- // Unter CHF 65 nimmt der zusätzliche Werbeeffekt einer Preissenkung ab.
- const price=Math.pow(65/d.price,segment.elasticity*(d.price<65?.68:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+ // Unter CHF 65 nimmt der zusätzliche Werbeeffekt einer Preissenkung deutlich ab.
+ const price=Math.pow(65/d.price,segment.elasticity*(d.price<65?.50:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
  const quality=clamp(.75+(s.quality-75)*.012+.028*s.assets.lift+.018*s.assets.service,.55,1.65)*(s.assets.lift&&s.assets.service?.965:1);
  const staffRatio=d.staff/Math.max(50,s.guests/1450);
  const service=clamp(.68+.31*staffRatio,.64,1.2);
@@ -116,7 +116,7 @@ function marketDemand(teams,e){
   const loyalShare=.36*clamp((65-lowPrice)/20,0,1);
   const withoutPrice=scores.map((v,i)=>{
    const d=teams[i].pick;
-   const priceTerm=Math.pow(65/d.price,segment.elasticity*(d.price<65?.68:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+   const priceTerm=Math.pow(65/d.price,segment.elasticity*(d.price<65?.50:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
    return v/priceTerm;
   });
   const stableTotal=withoutPrice.reduce((a,b)=>a+b,0);
@@ -190,7 +190,7 @@ effect(1,(d.wage-s.wage)*(d.wage<s.wage?2.9:1.25)+(d.staff-s.staff)*.28-(e.staff
 if((wageCut>=2||belowBase>=5)&&game.season<5){
 ns.delayed.push({when:game.season+1,guestFactor:Math.max(.78,1-wageCut*.011-belowBase*.006),group:1,points:-Math.min(14,Math.round(wageCut*.65+belowBase*.3)),message:"Die Lohnpolitik der Vorsaison führt zu Personalabgängen und geringerer Servicequalität. Dadurch verliert das Skigebiet Gäste."});
 }
-effect(2,clamp(profit/95000,-12,13)-(ns.debt>950000?6:0),profit>=0?"Positives Saisonergebnis stärkt die Kapitalgeber.":"Verluste machen Kapitalgeber unzufrieden.");effect(3,d.supplier==="zuverlässig"?2:d.supplier==="nachhaltig"?3:-4,d.supplier==="günstig"?"Preisaggressive Lieferantenwahl belastet die langfristige Geschäftsbeziehung.":null);effect(4,ns.staff>=55?1:-4);effect(5,d.supplier==="nachhaltig"?3:d.supplier==="günstig"?-2:0);effect(6,d.price<58?-4:d.price>80?1:2,d.price<58?"Der aggressive Preiswettbewerb belastet die Beziehungen zur Konkurrenz.":null);if(e.green){effect(5,ns.assets.eco?9:-9,ns.assets.eco?"Nachhaltige Vorinvestitionen überzeugen die Öffentlichkeit.":"Die neuen Nachhaltigkeitserwartungen treffen das Skigebiet unvorbereitet.");effect(4,ns.assets.eco?5:-4);}
+effect(2,clamp(profit/95000,-12,13)-(ns.debt>950000?6:0),profit>=0?"Positives Saisonergebnis stärkt die Kapitalgeber.":"Verluste machen Kapitalgeber unzufrieden.");effect(3,d.supplier==="zuverlässig"?2:d.supplier==="nachhaltig"?3:-3,d.supplier==="günstig"?"Preisaggressive Lieferantenwahl belastet die langfristige Geschäftsbeziehung.":null);effect(4,ns.staff>=55?1:-4);effect(5,d.supplier==="nachhaltig"?2:d.supplier==="günstig"?-1:0);effect(6,d.price<58?-4:d.price>80?1:2,d.price<58?"Der aggressive Preiswettbewerb belastet die Beziehungen zur Konkurrenz.":null);if(e.green){effect(5,ns.assets.eco?9:-9,ns.assets.eco?"Nachhaltige Vorinvestitionen überzeugen die Öffentlichkeit.":"Die neuen Nachhaltigkeitserwartungen treffen das Skigebiet unvorbereitet.");effect(4,ns.assets.eco?5:-4);}
 if(ns.assets.family&&d.segment==="Familien")effect(0,1.5,"Das Kinderland stärkt die Bindung von Familien und verbessert dauerhaft die Kundenzufriedenheit.");
 if(ns.assets.staffHome)effect(1,2.2,"Personalunterkünfte stärken die Mitarbeiterbindung auch in den Folgejahren.");
 if(d.supplier==="günstig"&&s.stake[3]<63&&game.season<5)ns.delayed.push({when:game.season+1,guestFactor:.988,group:3,points:-2,message:"Wiederholte Lieferprobleme führen zu kleineren Einschränkungen und Gästeverlusten."});const maintenanceQuality=clamp(-1+(d.maintenance-160000)/29000,-6,3.0);
