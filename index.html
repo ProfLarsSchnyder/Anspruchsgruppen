@@ -51,7 +51,7 @@ function getDecision(){const read=id=>$("#"+id);return {price:+read("price").val
 function field(id,label,min,max,step,value,prefix="",suffix=""){return '<label for="'+id+'">'+label+' <strong id="'+id+'Val"></strong></label><input type="range" id="'+id+'" min="'+min+'" max="'+max+'" step="'+step+'" value="'+value+'" data-prefix="'+prefix+'" data-suffix="'+suffix+'">'}
 
 function updateCapacityNote(){const s=game.teams[selected].state,d=getDecision();const n=document.getElementById("capacityNote");if(!n)return;const projected=clone(s);if(d.investment==="lift")projected.assets.lift++;const cap=capacityOf(projected,d);n.textContent="Geplante Gästekapazität: "+cap.toLocaleString("de-CH")+" Gäste pro Saison"+(d.investment==="lift"?" (inklusive +14’000 Plätze durch die neue Liftanlage).":" (abhängig von Personal und bestehenden Liftanlagen).")+" Zusätzliche Nachfrage kann nicht bedient werden."}
-const EVENT_IMAGES=["Energiekosten.jpg","vollepisten.jpeg","natürfreundlich.jpg","mitarbeiter.jpg","Schneemangel.jpg"];
+const EVENT_IMAGES=["Energiekosten.jpg","überfüllt.jpeg","natürfreundlich.jpg","mitarbeiter.jpg","Schneemangel.jpg"];
 function showEventIntro(){
  if(!game||game.season>5){showFinal();return}
  clearInterval(ticking);mode="intro";ends=0;renderHeader();
