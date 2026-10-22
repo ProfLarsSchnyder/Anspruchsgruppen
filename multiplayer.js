@@ -7,7 +7,7 @@
   const KEY = "sb_publishable_WF742ZbvUE8BzCTT2MZw2w_K2wFvYyt";
   const STORAGE_KEY = "alpenmanager_online_session_v1";
   let session = null, room = null, polling = false, working = false;
-  let lastView = "", lastVersion = -1, reportSlot = 1, message = "";
+  let lastView = "", lastVersion = -1, reportSlot = 1, message = "", lastFinishAttempt = 0;
   const app = () => document.getElementById("app");
   const get = id => document.getElementById(id);
   const text = v => String(v == null ? "" : v);
@@ -182,15 +182,15 @@
     polling=true;
     try{
       const fresh=await rpc("am_read_room",{p_code:session.code,p_token:session.token});
-      const changed=force||!room||fresh.phase!==lastView||fresh.season!==room.season;
+      const changed=force||!room||fresh.phase!==lastView||fresh.season!==room.season||((fresh.phase==="lobby"||fresh.phase==="report"||fresh.phase==="finished")&&fresh.version!==room.version);
       room=fresh;message="";
       if(changed)showPage();
       else {
         lastVersion=room.version;
         if(room.phase==="decision"){refreshTimer();if(isHost())updateReady();}
-        if(room.phase==="lobby"&&room.version!==lastVersion)showPage();
+        
       }
-      if(isHost()&&room.phase==="decision"&&secondsLeft()<=0&&!working)await finishSeason();
+      if(isHost()&&room.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)await finishSeason();
     }catch(e){
       if(/Zugang ungültig/.test(e.message)){clearSession();message="Der gespeicherte Zugang ist nicht mehr gültig.";homepage();}
       else status(e.message,true);
@@ -204,6 +204,7 @@
   }
   async function finishSeason(){
     if(!session||!isHost()||working||!room||room.phase!=="decision")return;
+    lastFinishAttempt=Date.now();
     if(secondsLeft()>0&&room.teams.filter(x=>x.ready).length!==3){status("Vorzeitig nur möglich, wenn alle drei Teams ihre Entscheidungen gespeichert haben.",true);return;}
     working=true;status("Berechne die Saison für alle drei Skigebiete …");
     try{
@@ -230,7 +231,7 @@
     session=stored();
     if(session&&session.code&&session.token)refresh(true);
     else {clearSession();homepage();}
-    setInterval(()=>{if(!session)return;refreshTimer();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working)finishSeason();},500);
+    setInterval(()=>{if(!session)return;refreshTimer();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)finishSeason();},500);
     setInterval(()=>{if(session&&!polling&&!working)refresh(false);},1900);
   }
   document.addEventListener("DOMContentLoaded",start);
