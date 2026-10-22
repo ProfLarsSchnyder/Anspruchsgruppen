@@ -26,7 +26,7 @@ const EVENTS=[
 ];
 const INVEST=[
 {id:"lift",name:"Moderne Liftanlagen",price:620000,desc:"Mehr Kapazität und Komfort. Langfristig attraktiv für Gäste."},
-{id:"snow",name:"Beschneiungsanlage",price:490000,desc:"Weniger wetterabhängig; hoher Energie- und Wasserbedarf."},
+{id:"snow",name:"Beschneiungsanlage",price:450000,desc:"Weniger wetterabhängig; hoher Energie- und Wasserbedarf."},
 {id:"eco",name:"Energie- und Umweltpaket",price:360000,desc:"Anfangs teuer, später tiefere Energiekosten und weniger Umweltbelastung."},
 {id:"service",name:"Restaurant und Service",price:280000,desc:"Bessere Gastronomie und höhere Nebenerträge."},
 {id:"family",name:"Kinderland und Familienpark",price:300000,desc:"Mehr Familien und zusätzliche Einnahmen, aber laufender Unterhalt."},
@@ -87,11 +87,11 @@ function appeal(t,segment,e){
  const supply=clamp(.86+s.stake[3]/460,.85,1.09)*(d.supplier==="günstig"?.987:d.supplier==="nachhaltig"?1.018:1);
  const publicSupport=clamp(.91+s.stake[4]/950,.91,1.03);
  const green=segment.name==="Premiumgäste"||segment.name==="Junge Erwachsene"?(1+.05*s.assets.eco+(e.green?.035*s.assets.eco:0)):1;
- const sport=segment.name==="Sportliche Gäste"?(1+.04*s.assets.lift+.085*s.assets.snow):1;
- const family=segment.name==="Familien"?(1+.03*s.assets.service):1;
+ const sport=segment.name==="Sportliche Gäste"?(1+.04*s.assets.lift+.11*s.assets.snow):1;
+ const family=segment.name==="Familien"?(1+.03*s.assets.service+.05*s.assets.snow):1;
  const target=segment.name===d.segment?1+.35*(1-Math.exp(-d.marketing/105000)):1+.055*(1-Math.exp(-d.marketing/130000));
  const brand=clamp(.88+s.stake[6]/600,.88,1.06);
- const familyPark=segment.name==="Familien"?1+.24*(s.assets.family||0):1;
+ const familyPark=segment.name==="Familien"?1+.20*(s.assets.family||0):1;
  const staffHousing=1+.065*(s.assets.staffHome||0);
  const transport=(segment.name==="Familien"||segment.name==="Junge Erwachsene"?1.10:1.04)**(s.assets.shuttle||0);
  const booking=(segment.name==="Junge Erwachsene"?1.13:segment.name==="Premiumgäste"?1.09:1.035)**(s.assets.digital||0);
@@ -107,7 +107,22 @@ function marketDemand(teams,e){
   const scores=teams.map(t=>t.state.bankrupt?0:appeal(t,segment,e));
   const sum=scores.reduce((a,b)=>a+b,0);
   if(sum===0)continue;
-  teams.forEach((t,i)=>{result[i]+=240000*e.demand*segment.share*scores[i]/sum});
+  // Bei Tiefpreisaktionen wechseln Stammgäste weniger stark nur wegen des Preises:
+  // Bis zu 36 % der bisherigen Nachfrage bleiben stärker an Qualität,
+  // Infrastruktur und Service gebunden. Für Preise ab CHF 65 ist alles wie bisher.
+  const activePrices=teams.filter(t=>!t.state.bankrupt).map(t=>t.pick.price);
+  const lowPrice=Math.min(...activePrices);
+  const loyalShare=.36*clamp((65-lowPrice)/20,0,1);
+  const withoutPrice=scores.map((v,i)=>{
+   const d=teams[i].pick;
+   const priceTerm=Math.pow(65/d.price,segment.elasticity*(d.price<65?.68:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+   return v/priceTerm;
+  });
+  const stableTotal=withoutPrice.reduce((a,b)=>a+b,0);
+  teams.forEach((t,i)=>{
+   const marketShare=(1-loyalShare)*scores[i]/sum+loyalShare*withoutPrice[i]/stableTotal;
+   result[i]+=240000*e.demand*segment.share*marketShare;
+  });
   // Neue Skifahrer statt ausschliesslich Abwerbung: Günstige Preise wecken
   // zusätzliche Nachfrage ausserhalb der bisherigen 240'000 potenziellen Gäste.
   // Die Wirkung sättigt sich, wenn mehrere Gebiete gleichzeitig günstig sind.
@@ -162,7 +177,7 @@ if(guestPotential>capacity){news.push("Kapazitätsgrenze: "+round(guestPotential
 if(item.id==="family"){effect(0,5,"Das Kinderland verbessert das Familienangebot und die Gästebindung.");effect(5,1);news.push("Familienpark: mehr Anziehungskraft auf Familien und zusätzliche Nebeneinnahmen.");}
 if(item.id==="staffHome"){effect(1,12,"Personalunterkünfte verbessern die Arbeitsbedingungen und Personalbindung.");effect(5,2);news.push("Personalunterkünfte: besserer Service und geringeres Risiko bei Fachkräftemangel.");}
 if(item.id==="shuttle"){effect(0,3,"Der Shuttle verbessert die Erreichbarkeit des Skigebiets.");effect(5,7,"Umweltfreundliche Anreise verbessert das öffentliche Vertrauen.");effect(4,3);news.push("ÖV-Shuttle: bessere Anreise für Gäste und weniger Autoverkehr.");}
-if(item.id==="digital"){effect(0,5,"Digitales Ticketing verbessert die Buchung und den Gästeservice.");effect(3,2);news.push("Ticket-App: besonders für junge und digitale Gäste attraktiver.");}}const supplierRiskCost=d.supplier==="günstig"&&s.stake[3]<63?48000:0;const supplierCost=(d.supplier==="günstig"?-65000:d.supplier==="nachhaltig"?65000:0)+supplierRiskCost;if(supplierRiskCost)news.push("Wiederholte Billigbeschaffung verursacht zusätzliche Lieferausfälle und Sonderkosten: "+money(supplierRiskCost)+".");const salary=d.staff*62000*(1+d.wage/100),fuel=(700000+guests*2.0)*e.factor*(1-.09*ns.assets.eco),operating=835000+guests*5.5+supplierCost+ns.assets.lift*255000+ns.assets.snow*45000+ns.assets.service*95000+(ns.assets.lift&&ns.assets.service?55000:0)+(ns.assets.lift&&ns.assets.eco?20000:0)+ns.assets.eco*18000+(ns.assets.family||0)*65000+(ns.assets.staffHome||0)*40000+(ns.assets.shuttle||0)*50000+(ns.assets.digital||0)*35000,tickets=guests*d.price,extras=guests*(13+(ns.assets.lift?1.55:1.8)*ns.assets.service+3.9*(ns.assets.family||0)),rev=tickets+extras;const interest=ns.debt*.055;let maintenance=d.maintenance;let profit=rev-salary-fuel-operating-d.marketing-maintenance-interest;const cashBefore=ns.cash;let cash=ns.cash+profit-invest;let borrowing=0;if(cash<0){
+if(item.id==="digital"){effect(0,5,"Digitales Ticketing verbessert die Buchung und den Gästeservice.");effect(3,2);news.push("Ticket-App: besonders für junge und digitale Gäste attraktiver.");}}const supplierRiskCost=d.supplier==="günstig"&&s.stake[3]<63?48000:0;const supplierCost=(d.supplier==="günstig"?-65000:d.supplier==="nachhaltig"?65000:0)+supplierRiskCost;if(supplierRiskCost)news.push("Wiederholte Billigbeschaffung verursacht zusätzliche Lieferausfälle und Sonderkosten: "+money(supplierRiskCost)+".");const salary=d.staff*62000*(1+d.wage/100),fuel=(700000+guests*2.0)*e.factor*(1-.09*ns.assets.eco),operating=835000+guests*5.5+supplierCost+ns.assets.lift*255000+ns.assets.snow*45000+ns.assets.service*95000+(ns.assets.lift&&ns.assets.service?55000:0)+(ns.assets.lift&&ns.assets.eco?20000:0)+ns.assets.eco*18000+(ns.assets.family||0)*65000+(ns.assets.staffHome||0)*40000+(ns.assets.shuttle||0)*50000+(ns.assets.digital||0)*35000,tickets=guests*d.price,extras=guests*(13+(ns.assets.lift?1.55:1.8)*ns.assets.service+3.0*(ns.assets.family||0)),rev=tickets+extras;const interest=ns.debt*.055;let maintenance=d.maintenance;let profit=rev-salary-fuel-operating-d.marketing-maintenance-interest;const cashBefore=ns.cash;let cash=ns.cash+profit-invest;let borrowing=0;if(cash<0){
  const need=-cash+100000;
  borrowing=Math.min(need,Math.max(0,MAX_DEBT-ns.debt));
  ns.debt+=borrowing;cash+=borrowing;
@@ -174,10 +189,10 @@ effect(1,(d.wage-s.wage)*(d.wage<s.wage?2.9:1.25)+(d.staff-s.staff)*.28-(e.staff
 if((wageCut>=2||belowBase>=5)&&game.season<5){
 ns.delayed.push({when:game.season+1,guestFactor:Math.max(.78,1-wageCut*.011-belowBase*.006),group:1,points:-Math.min(14,Math.round(wageCut*.65+belowBase*.3)),message:"Die Lohnpolitik der Vorsaison führt zu Personalabgängen und geringerer Servicequalität. Dadurch verliert das Skigebiet Gäste."});
 }
-effect(2,clamp(profit/95000,-12,13)-(ns.debt>950000?6:0),profit>=0?"Positives Saisonergebnis stärkt die Kapitalgeber.":"Verluste machen Kapitalgeber unzufrieden.");effect(3,d.supplier==="zuverlässig"?2:d.supplier==="nachhaltig"?4:-5,d.supplier==="günstig"?"Preisaggressive Lieferantenwahl belastet die langfristige Geschäftsbeziehung.":null);effect(4,ns.staff>=55?1:-4);effect(5,d.supplier==="nachhaltig"?5:d.supplier==="günstig"?-2:0);effect(6,d.price<58?-4:d.price>80?1:2,d.price<58?"Der aggressive Preiswettbewerb belastet die Beziehungen zur Konkurrenz.":null);if(e.green){effect(5,ns.assets.eco?9:-9,ns.assets.eco?"Nachhaltige Vorinvestitionen überzeugen die Öffentlichkeit.":"Die neuen Nachhaltigkeitserwartungen treffen das Skigebiet unvorbereitet.");effect(4,ns.assets.eco?5:-4);}
-if(ns.assets.family&&d.segment==="Familien")effect(0,2,"Das Kinderland stärkt die Bindung von Familien und verbessert dauerhaft die Kundenzufriedenheit.");
+effect(2,clamp(profit/95000,-12,13)-(ns.debt>950000?6:0),profit>=0?"Positives Saisonergebnis stärkt die Kapitalgeber.":"Verluste machen Kapitalgeber unzufrieden.");effect(3,d.supplier==="zuverlässig"?2:d.supplier==="nachhaltig"?3:-4,d.supplier==="günstig"?"Preisaggressive Lieferantenwahl belastet die langfristige Geschäftsbeziehung.":null);effect(4,ns.staff>=55?1:-4);effect(5,d.supplier==="nachhaltig"?3:d.supplier==="günstig"?-2:0);effect(6,d.price<58?-4:d.price>80?1:2,d.price<58?"Der aggressive Preiswettbewerb belastet die Beziehungen zur Konkurrenz.":null);if(e.green){effect(5,ns.assets.eco?9:-9,ns.assets.eco?"Nachhaltige Vorinvestitionen überzeugen die Öffentlichkeit.":"Die neuen Nachhaltigkeitserwartungen treffen das Skigebiet unvorbereitet.");effect(4,ns.assets.eco?5:-4);}
+if(ns.assets.family&&d.segment==="Familien")effect(0,1.5,"Das Kinderland stärkt die Bindung von Familien und verbessert dauerhaft die Kundenzufriedenheit.");
 if(ns.assets.staffHome)effect(1,2.2,"Personalunterkünfte stärken die Mitarbeiterbindung auch in den Folgejahren.");
-if(d.supplier==="günstig"&&s.stake[3]<63&&game.season<5)ns.delayed.push({when:game.season+1,guestFactor:.988,group:3,points:-2,message:"Wiederholte Lieferprobleme führen zu kleineren Einschränkungen und Gästeverlusten."});const maintenanceQuality=clamp(-1+(d.maintenance-160000)/22000,-6,3.3);
+if(d.supplier==="günstig"&&s.stake[3]<63&&game.season<5)ns.delayed.push({when:game.season+1,guestFactor:.988,group:3,points:-2,message:"Wiederholte Lieferprobleme führen zu kleineren Einschränkungen und Gästeverlusten."});const maintenanceQuality=clamp(-1+(d.maintenance-160000)/29000,-6,3.0);
 ns.quality=clamp(ns.quality+maintenanceQuality,0,100);
 effect(0,clamp(maintenanceQuality*.55,-3,2),maintenanceQuality< -2?"Zu wenig Wartung lässt die Infrastruktur schrittweise verschleissen.":maintenanceQuality>1?"Höhere Wartungsausgaben verbessern den Anlagenzustand schrittweise.":null);
 if(d.maintenance<120000&&game.season<5){const penalty=clamp((120000-d.maintenance)/1800000,0,.04);ns.delayed.push({when:game.season+1,guestFactor:1-penalty,group:0,points:-Math.max(1,Math.round(penalty*90)),message:"Zu geringe Wartung in der Vorsaison führt zu Einschränkungen und weniger Gästen."});}
