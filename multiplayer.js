@@ -6,6 +6,7 @@
   const API = "https://xvgbisxwptnfupibcbpg.supabase.co/rest/v1/rpc/";
   const KEY = "sb_publishable_WF742ZbvUE8BzCTT2MZw2w_K2wFvYyt";
   const STORAGE_KEY = "alpenmanager_online_session_v1";
+  const PROJECTOR_KEY = "alpenmanager_beamer_session_v1";
   let session = null, room = null, polling = false, working = false;
   let lastView = "", lastVersion = -1, reportSlot = 1, message = "", lastFinishAttempt = 0;
   const app = () => document.getElementById("app");
@@ -17,10 +18,19 @@
   const teamBySlot = (slot) => (room?.teams||[]).find(x => x.slot === Number(slot));
   const own = () => teamBySlot(session?.slot);
   const isHost = () => session && session.role === "host";
+  const isProjector = () => session && session.role === "projector";
   const stateFor = t => (t && t.state && Object.keys(t.state).length ? t.state : clone(START));
-  const stored = () => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } };
-  function saveSession(s) { session = s; localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
-  function clearSession() { session = null; room = null; localStorage.removeItem(STORAGE_KEY); lastView="";lastVersion=-1; }
+  const stored = () => { try { return JSON.parse(sessionStorage.getItem(PROJECTOR_KEY))||JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } };
+  function saveSession(s) {
+    session=s;
+    if(s.role==="projector"){sessionStorage.setItem(PROJECTOR_KEY,JSON.stringify(s));}
+    else{sessionStorage.removeItem(PROJECTOR_KEY);localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}
+  }
+  function clearSession(){
+    if(session?.role==="projector")sessionStorage.removeItem(PROJECTOR_KEY);
+    else{localStorage.removeItem(STORAGE_KEY);sessionStorage.removeItem(PROJECTOR_KEY);}
+    session=null;room=null;lastView="";lastVersion=-1;
+  }
   function status(messageText, error) {
     message = messageText || "";
     const el = get("netMessage");
@@ -47,6 +57,7 @@
     if(get("netStyles"))return;
     const el=document.createElement("style");el.id="netStyles";
     el.textContent=".net-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:17px}.net-tag{background:#e8f2f8;color:#174e6e;border:1px solid #c7dce9;border-radius:9px;padding:7px 12px;font-size:13px;font-weight:650}.net-code{font-size:35px;letter-spacing:5px;font-weight:800;color:#0c4870}.net-item{padding:13px;border:1px solid #dce8ef;border-radius:10px;margin-bottom:9px;background:#fbfdff}.net-item strong{display:block}.net-muted{color:#607589;font-size:13px}.net-action{margin-top:13px}.net-flex{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.net-input{width:100%;border:1px solid #cadbe6;border-radius:9px;padding:12px;margin:7px 0 13px;background:#fff;color:#172e42}.net-flag{display:inline-block;padding:4px 9px;border-radius:8px;font-size:12px;background:#e7f4ef;color:#236748}.net-flag.wait{background:#fff3e0;color:#815000}.net-error{min-height:18px;margin-top:13px;font-size:14px}.net-ranking{display:grid;gap:10px}.net-rank{border:1px solid #dce8ef;background:#fbfdff;border-radius:12px;padding:16px}.net-rank.winner{border-color:#78aaa0;background:#f1faf7}.net-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.net-timer{font-size:35px;font-weight:800;color:#12668b;letter-spacing:1px}.net-short{font-size:13px;color:#657f91}.net-locked{opacity:.6}.net-note{background:#eff6fa;border-radius:10px;padding:12px 14px;color:#33576a}.net-bad{color:#ad2834}.net-team-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}@media(max-width:560px){.net-code{font-size:26px}.net-timer{font-size:27px}}";
+    el.textContent += ".net-role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-items:stretch}.net-role-grid .panel{height:100%}.projector{max-width:1480px;margin:auto}.projector .net-code{font-size:46px}.projector h2{font-size:clamp(25px,3vw,43px)}.projector h3{font-size:23px}.projector .net-stat{border:1px solid #d5e5ee;background:#fff;border-radius:16px;padding:19px;min-width:0}.projector .net-big{font-size:clamp(24px,3vw,43px);font-weight:850;line-height:1.1;color:#0d415c}.projector .net-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.projector .net-team{display:grid;grid-template-columns:minmax(135px,1fr) auto;gap:12px;align-items:center;border:1px solid #d5e5ee;border-radius:13px;padding:16px;background:#fff}.projector .net-score-row{display:grid;grid-template-columns:65px minmax(120px,1fr) 85px 120px;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #dce9f1}.projector .net-bartrack{height:14px;background:#e8f0f4;border-radius:8px;overflow:hidden}.projector .net-barfill{height:100%;border-radius:8px;background:#237b98}.projector .net-hero{background:linear-gradient(115deg,#11354f,#196281);border-radius:20px;color:white;padding:28px 32px;margin-bottom:20px}.projector .net-hero h2,.projector .net-hero .net-big{color:#fff}.projector .net-event{padding:20px 0}.projector .net-event img{max-height:360px;object-fit:cover}.projector .net-project-timer{font-size:clamp(64px,12vw,150px);font-weight:900;letter-spacing:5px;line-height:1.2;color:#0d526d;text-align:center}.projector .net-sub{font-size:16px;color:#5a7588}.projector .net-history{width:100%;height:auto;max-height:270px}.projector .net-legend{display:flex;gap:16px;flex-wrap:wrap}.projector .net-dot{width:12px;height:12px;display:inline-block;border-radius:100%;margin-right:5px}@media(max-width:670px){.projector .net-score-row{grid-template-columns:45px 1fr 60px}.projector .net-score-row .net-extracol{display:none}.projector .net-code{font-size:30px}}";
     document.head.appendChild(el);
   }
   function pageTop(title) {
@@ -58,17 +69,34 @@
   function leaveButton(){return '<button class="btn alt" id="netLeave">Verbindung verlassen</button>';}
   function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{if(confirm("Dieses Gerät vom Spiel trennen? Die Spielrunde bleibt gespeichert.")){clearSession();homepage();}};}
   function homepage() {
-    room=null; lastView="home"; lastVersion=-1;
-    const head=get("headState");if(head)head.textContent="Mehrspieler-Modus";
-    app().innerHTML='<div class="hero"><h2>AlpenManager</h2><p>Drei Skigebiete, fünf Saisons und sieben Anspruchsgruppen. Treffen Sie wirtschaftliche Entscheidungen und behaupten Sie sich im gemeinsamen Gästemarkt.</p></div>'+
-      '<div class="net-columns"><section class="panel stack"><h2>Spiel leiten</h2><p>Erstellen Sie als Lehrperson eine Spielrunde. Sie erhalten einen Zugangscode für drei Teams und steuern die Saisons zentral.</p><button class="btn" id="netCreate">Neue Spielrunde erstellen</button><p class="net-muted">Der Zugang der Lehrperson wird auf diesem Gerät gespeichert.</p></section>'+
-      '<section class="panel stack"><h2>Spiel beitreten</h2><p>Geben Sie den Spielcode ein und wählen Sie eines der drei Skigebiete.</p><label for="netCode">Spielcode</label><input class="net-input" id="netCode" placeholder="z. B. A1B2C3" maxlength="6" autocomplete="off">'+
+    room=null;lastView="home";lastVersion=-1;
+    const head=get("headState");if(head)head.textContent="Startseite";
+    let preset="";
+    try{preset=new URLSearchParams(location.search).get("code")||"";}catch{}
+    const projectorCode=/^[A-F0-9]{6}$/.test(preset)?preset:"";
+    app().innerHTML='<div class="hero"><h2>AlpenManager</h2><p>Führen Sie ein Skigebiet durch fünf Saisons. Drei Teams konkurrieren um Gäste, Gewinne und die Zufriedenheit ihrer Anspruchsgruppen.</p></div>'+
+      '<div class="net-role-grid">'+
+      '<section class="panel stack"><div><span class="net-tag">Spiel organisieren</span><h2 style="margin-top:14px">Neue Spielrunde</h2><p>Jede Person kann ein Spiel eröffnen – dafür ist kein Lehrpersonen-Passwort nötig. Sie erhalten einen Code für drei Teams und steuern den gemeinsamen Ablauf.</p></div><button class="btn" id="netCreate">Spiel erstellen</button><p class="net-muted">Die Spielsteuerung bleibt auf diesem Gerät gespeichert.</p></section>'+
+      '<section class="panel stack"><div><span class="net-tag">Teamzugang</span><h2 style="margin-top:14px">Spiel beitreten</h2><p>Mit Spielcode und eigenem Skigebiet am Wettbewerb teilnehmen.</p></div><label for="netCode">Spielcode</label><input class="net-input" id="netCode" placeholder="z. B. A1B2C3" maxlength="6" autocomplete="off" value="'+html(projectorCode)+'">'+
       '<label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" placeholder="z. B. Bergblick" maxlength="36" autocomplete="off">'+
       '<label for="netSlot">Skigebiet</label><select class="net-input" id="netSlot"><option value="1">Skigebiet 1</option><option value="2">Skigebiet 2</option><option value="3">Skigebiet 3</option></select>'+
-      '<button class="btn" id="netJoin">Beitreten</button></section></div>'+
-      '<div class="panel" style="margin-top:16px"><h3>Ohne Internetverbindung testen</h3><p class="net-muted">Der bisherige Lehrpersonen-Testmodus mit drei Teams auf einem einzigen Gerät bleibt erhalten.</p><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+msgBox();
+      '<button class="btn" id="netJoin">Beitreten</button></section>'+
+      '<section class="panel stack"><div><span class="net-tag">Beamer-Ansicht</span><h2 style="margin-top:14px">Lehrpersonen-Dashboard</h2><p>Grosse, übersichtliche Anzeige mit gemeinsamem Timer, Teamfortschritt, Saisonergebnissen und Schlussrangliste. Das Dashboard ist schreibgeschützt.</p></div>'+
+      '<label for="netProjectCode">Spielcode</label><input class="net-input" id="netProjectCode" placeholder="z. B. A1B2C3" maxlength="6" autocomplete="off" value="'+html(projectorCode)+'">'+
+      '<label for="netProjectPin">Dashboard-Passwort</label><input class="net-input" id="netProjectPin" type="password" placeholder="Vierstelliger Code" maxlength="16" autocomplete="off">'+
+      '<button class="btn alt" id="netProject">Dashboard öffnen</button><p class="net-muted">Passwort wird ausschliesslich für den Lesemodus geprüft.</p></section></div>'+
+      '<div class="panel" style="margin-top:16px"><h3>Lokale Demonstration</h3><p class="net-muted">Die bisherige Demo mit drei Teams an einem einzigen Gerät ist weiterhin verfügbar. Diese Demo verwendet nicht die Online-Datenbank.</p><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+msgBox();
     get("netCreate").onclick=async()=>{try{status("Spielrunde wird erstellt …");const x=await rpc("am_create_room",{p_title:"AlpenManager"});saveSession({code:x.code,token:x.token,role:"host"});await refresh(true);}catch(e){status(e.message,true)}};
     get("netJoin").onclick=async()=>{try{status("Team wird angemeldet …");const code=get("netCode").value.trim().toUpperCase(),name=get("netName").value.trim(),slot=+get("netSlot").value;if(!/^[A-F0-9]{6}$/.test(code))throw Error("Der Spielcode besteht aus sechs Zeichen (A–F, 0–9).");if(name.length<2)throw Error("Bitte einen Namen für das Skigebiet eingeben.");const x=await rpc("am_join_room",{p_code:code,p_slot:slot,p_name:name});saveSession({code:x.code,token:x.token,role:"team",slot:x.slot});await refresh(true);}catch(e){status(e.message,true)}};
+    get("netProject").onclick=async()=>{try{
+      const code=get("netProjectCode").value.trim().toUpperCase(),pin=get("netProjectPin").value.trim();
+      if(!/^[A-F0-9]{6}$/.test(code))throw Error("Bitte einen gültigen Spielcode eingeben.");
+      if(!pin)throw Error("Bitte das Dashboard-Passwort eingeben.");
+      status("Dashboard-Zugang wird geprüft …");
+      const preview=await rpc("am_projector_room",{p_code:code,p_pin:pin});
+      saveSession({code,pin,role:"projector"});
+      room=preview;message="";showPage();
+    }catch(e){status(e.message,true)}};
     get("netOffline").onclick=()=>{message="";startView();};
   }
   function commonHeader() {
