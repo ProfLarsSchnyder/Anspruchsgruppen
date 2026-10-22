@@ -8,6 +8,7 @@
   const STORAGE_KEY = "alpenmanager_online_session_v1";
   const PROJECTOR_KEY = "alpenmanager_beamer_session_v1";
   let session = null, room = null, polling = false, working = false;
+  let teacherPin = ""; // Nur im Arbeitsspeicher, nicht dauerhaft speichern.
   let lastView = "", lastVersion = -1, reportSlot = 1, message = "", lastFinishAttempt = 0;
   const app = () => document.getElementById("app");
   const get = id => document.getElementById(id);
@@ -68,36 +69,89 @@
   function msgBox(){return '<p id="netMessage" class="net-error" role="status">'+html(message)+'</p>';}
   function leaveButton(){return '<button class="btn alt" id="netLeave">Verbindung verlassen</button>';}
   function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{const warning=isHost()?"Spielleitungszugang auf diesem Gerät verlassen? Der Zugangstoken wird gelöscht. Ohne ihn können Sie diese Runde nicht weiter steuern.":"Diese Ansicht verlassen? Die Spielrunde bleibt gespeichert.";if(confirm(warning)){clearSession();homepage();}};}
-  function homepage() {
+
+  // Das Lehrpersonen-Dashboard ist der EINZIGE Einstieg für neue Online-Spiele.
+  // Die Erlaubnis wird nicht nur im Browser, sondern in Supabase überprüft.
+  function teacherLanding(){
+    if(!teacherPin){homepage();return;}
+    room=null;lastView="teacher";lastVersion=-1;message="";
+    const h=get("headState");if(h)h.textContent="Lehrpersonen-Dashboard";
+    let prefill="";try{prefill=new URLSearchParams(location.search).get("code")||"";}catch{}
+    const code=/^[A-F0-9]{6}$/.test(prefill)?prefill:"";
+    app().innerHTML='<div class="hero"><h2>Lehrpersonen-Dashboard</h2><p>Hier eröffnen Sie Ihre Spielrunde, verwalten den Spielablauf und öffnen die Beamer-Ansicht. Die drei Teams treten später selbstständig mit dem Spielcode bei.</p></div>'+
+      '<div class="net-role-grid">'+
+      '<section class="panel stack"><span class="net-tag">Spielleitung</span><h2>Neue Spielrunde</h2><p>Erstellt einen gemeinsamen Wettbewerb für drei Skigebiete über fünf Saisons. Der Zugang zur Steuerung wird auf diesem Gerät gespeichert.</p>'+
+      '<label for="netRoomTitle">Name der Spielrunde (optional)</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager">'+
+      '<button class="btn" id="netCreate">Spiel erstellen</button><p class="net-muted">Nach der Erstellung sehen Sie den Spielcode und die angemeldeten Teams.</p></section>'+
+      '<section class="panel stack"><span class="net-tag">Für den Beamer</span><h2>Bestehende Spielrunde anzeigen</h2><p>Öffnen Sie eine laufende Spielrunde im schreibgeschützten Beamer-Dashboard mit grossem Timer, Teamstatus und Rangliste.</p>'+
+      '<label for="netProjectCode">Spielcode</label><input class="net-input" id="netProjectCode" maxlength="6" value="'+html(code)+'" placeholder="z. B. A1B2C3" autocomplete="off">'+
+      '<button class="btn alt" id="netProject">Beamer-Ansicht öffnen</button><p class="net-muted">Die Spielsteuerung bleibt getrennt von der Beamer-Ansicht.</p></section></div>'+
+      '<div class="panel" style="margin-top:16px"><h3>Lokale Demonstration</h3><p class="net-muted">Die bestehende Ein-Gerät-Demo für die Unterrichtsvorbereitung kann weiterhin hier gestartet werden. Sie ist von den Online-Spielrunden getrennt.</p><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
+      '<div style="margin-top:15px"><button class="btn alt" id="netTeacherBack">Abmelden und zur Startseite</button></div>'+msgBox();
+    get("netCreate").onclick=async()=>{
+      const button=get("netCreate");if(button)button.disabled=true;
+      try{
+        status("Erstelle die Spielrunde …");
+        const x=await rpc("am_create_room",{p_title:get("netRoomTitle").value.trim()||"AlpenManager",p_pin:teacherPin});
+        teacherPin="";
+        saveSession({code:x.code,token:x.token,role:"host"});
+        await refresh(true);
+      }catch(e){status(e.message,true)}
+      finally{if(get("netCreate"))get("netCreate").disabled=false}
+    };
+    get("netProject").onclick=async()=>{
+      const code=get("netProjectCode").value.trim().toUpperCase();
+      if(!/^[A-F0-9]{6}$/.test(code)){status("Bitte einen gültigen Spielcode eingeben.",true);return;}
+      try{
+        status("Beamer-Ansicht wird geöffnet …");
+        const preview=await rpc("am_projector_room",{p_code:code,p_pin:teacherPin});
+        saveSession({code,pin:teacherPin,role:"projector"});
+        teacherPin="";room=preview;message="";showPage();
+      }catch(e){status(e.message,true)}
+    };
+    get("netTeacherBack").onclick=()=>{teacherPin="";homepage()};
+    get("netOffline").onclick=()=>{startView()};
+  }
+
+  function homepage(){
     room=null;lastView="home";lastVersion=-1;
     const head=get("headState");if(head)head.textContent="Startseite";
-    let preset="";
-    try{preset=new URLSearchParams(location.search).get("code")||"";}catch{}
-    const projectorCode=/^[A-F0-9]{6}$/.test(preset)?preset:"";
-    app().innerHTML='<div class="hero"><h2>AlpenManager</h2><p>Führen Sie ein Skigebiet durch fünf Saisons. Drei Teams konkurrieren um Gäste, Gewinne und die Zufriedenheit ihrer Anspruchsgruppen.</p></div>'+
+    let preset="";try{preset=new URLSearchParams(location.search).get("code")||"";}catch{}
+    const code=/^[A-F0-9]{6}$/.test(preset)?preset:"";
+    app().innerHTML='<div class="hero"><h2>AlpenManager</h2><p>Drei Skigebiete, fünf Saisons und sieben Anspruchsgruppen. Starten Sie einen gemeinsamen Wettbewerb oder treten Sie Ihrem Team bei.</p></div>'+
       '<div class="net-role-grid">'+
-      '<section class="panel stack"><div><span class="net-tag">Spiel organisieren</span><h2 style="margin-top:14px">Neue Spielrunde</h2><p>Jede Person kann ein Spiel eröffnen – dafür ist kein Lehrpersonen-Passwort nötig. Sie erhalten einen Code für drei Teams und steuern den gemeinsamen Ablauf.</p></div><button class="btn" id="netCreate">Spiel erstellen</button><p class="net-muted">Die Spielsteuerung bleibt auf diesem Gerät gespeichert.</p></section>'+
-      '<section class="panel stack"><div><span class="net-tag">Teamzugang</span><h2 style="margin-top:14px">Spiel beitreten</h2><p>Mit Spielcode und eigenem Skigebiet am Wettbewerb teilnehmen.</p></div><label for="netCode">Spielcode</label><input class="net-input" id="netCode" placeholder="z. B. A1B2C3" maxlength="6" autocomplete="off" value="'+html(projectorCode)+'">'+
-      '<label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" placeholder="z. B. Bergblick" maxlength="36" autocomplete="off">'+
+      '<section class="panel stack"><span class="net-tag">Für Lernende</span><h2>Spiel beitreten</h2><p>Sie erhalten den Spielcode von Ihrer Lehrperson. Wählen Sie anschliessend eines der drei Skigebiete.</p>'+
+      '<label for="netCode">Spielcode</label><input class="net-input" id="netCode" maxlength="6" placeholder="z. B. A1B2C3" autocomplete="off" value="'+html(code)+'">'+
+      '<label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" maxlength="36" placeholder="z. B. Bergblick" autocomplete="off">'+
       '<label for="netSlot">Skigebiet</label><select class="net-input" id="netSlot"><option value="1">Skigebiet 1</option><option value="2">Skigebiet 2</option><option value="3">Skigebiet 3</option></select>'+
-      '<button class="btn" id="netJoin">Beitreten</button></section>'+
-      '<section class="panel stack"><div><span class="net-tag">Beamer-Ansicht</span><h2 style="margin-top:14px">Lehrpersonen-Dashboard</h2><p>Grosse, übersichtliche Anzeige mit gemeinsamem Timer, Teamfortschritt, Saisonergebnissen und Schlussrangliste. Das Dashboard ist schreibgeschützt.</p></div>'+
-      '<label for="netProjectCode">Spielcode</label><input class="net-input" id="netProjectCode" placeholder="z. B. A1B2C3" maxlength="6" autocomplete="off" value="'+html(projectorCode)+'">'+
-      '<label for="netProjectPin">Dashboard-Passwort</label><input class="net-input" id="netProjectPin" type="password" placeholder="Vierstelliger Code" maxlength="16" autocomplete="off">'+
-      '<button class="btn alt" id="netProject">Dashboard öffnen</button><p class="net-muted">Passwort wird ausschliesslich für den Lesemodus geprüft.</p></section></div>'+
-      '<div class="panel" style="margin-top:16px"><h3>Lokale Demonstration</h3><p class="net-muted">Die bisherige Demo mit drei Teams an einem einzigen Gerät ist weiterhin verfügbar. Diese Demo verwendet nicht die Online-Datenbank.</p><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+msgBox();
-    get("netCreate").onclick=async()=>{try{status("Spielrunde wird erstellt …");const x=await rpc("am_create_room",{p_title:"AlpenManager"});saveSession({code:x.code,token:x.token,role:"host"});await refresh(true);}catch(e){status(e.message,true)}};
-    get("netJoin").onclick=async()=>{try{status("Team wird angemeldet …");const code=get("netCode").value.trim().toUpperCase(),name=get("netName").value.trim(),slot=+get("netSlot").value;if(!/^[A-F0-9]{6}$/.test(code))throw Error("Der Spielcode besteht aus sechs Zeichen (A–F, 0–9).");if(name.length<2)throw Error("Bitte einen Namen für das Skigebiet eingeben.");const x=await rpc("am_join_room",{p_code:code,p_slot:slot,p_name:name});saveSession({code:x.code,token:x.token,role:"team",slot:x.slot});await refresh(true);}catch(e){status(e.message,true)}};
-    get("netProject").onclick=async()=>{try{
-      const code=get("netProjectCode").value.trim().toUpperCase(),pin=get("netProjectPin").value.trim();
-      if(!/^[A-F0-9]{6}$/.test(code))throw Error("Bitte einen gültigen Spielcode eingeben.");
-      if(!pin)throw Error("Bitte das Dashboard-Passwort eingeben.");
-      status("Dashboard-Zugang wird geprüft …");
-      const preview=await rpc("am_projector_room",{p_code:code,p_pin:pin});
-      saveSession({code,pin,role:"projector"});
-      room=preview;message="";showPage();
-    }catch(e){status(e.message,true)}};
-    get("netOffline").onclick=()=>{message="";startView();};
+      '<button class="btn" id="netJoin">Spiel beitreten</button></section>'+
+      '<section class="panel stack"><span class="net-tag">Nur für Lehrpersonen</span><h2>Lehrpersonen-Dashboard</h2><p>Melden Sie sich an, um eine neue Spielrunde zu erstellen, den Unterricht zu steuern oder Ergebnisse auf dem Beamer zu präsentieren.</p>'+
+      '<label for="netTeacherPin">Lehrpersonen-Passwort</label><input class="net-input" id="netTeacherPin" type="password" maxlength="16" autocomplete="off" placeholder="Passwort eingeben">'+
+      '<button class="btn alt" id="netTeacherLogin">Dashboard öffnen</button><p class="net-muted">Neue Spielrunden können ausschliesslich im Lehrpersonen-Dashboard erstellt werden.</p></section></div>'+msgBox();
+    get("netJoin").onclick=async()=>{
+      try{
+        status("Team wird angemeldet …");
+        const code=get("netCode").value.trim().toUpperCase(),name=get("netName").value.trim(),slot=+get("netSlot").value;
+        if(!/^[A-F0-9]{6}$/.test(code))throw Error("Der Spielcode besteht aus sechs Zeichen (A–F, 0–9).");
+        if(name.length<2)throw Error("Bitte einen Namen für das Skigebiet eingeben.");
+        const x=await rpc("am_join_room",{p_code:code,p_slot:slot,p_name:name});
+        saveSession({code:x.code,token:x.token,role:"team",slot:x.slot});
+        await refresh(true);
+      }catch(e){status(e.message,true)}
+    };
+    get("netTeacherLogin").onclick=async()=>{
+      const pin=get("netTeacherPin").value.trim();
+      if(!pin){status("Bitte das Lehrpersonen-Passwort eingeben.",true);return;}
+      const b=get("netTeacherLogin");if(b)b.disabled=true;
+      try{
+        status("Prüfe den Lehrpersonen-Zugang …");
+        await rpc("am_verify_teacher",{p_pin:pin});
+        teacherPin=pin;
+        teacherLanding();
+      }catch(e){status(e.message,true)}
+      finally{if(get("netTeacherLogin"))get("netTeacherLogin").disabled=false}
+    };
+    get("netTeacherPin").onkeydown=e=>{if(e.key==="Enter")get("netTeacherLogin").click()};
   }
   function commonHeader() {
     return pageTop(isHost()?"Spielleitung":(own()?.name||"Ihr Skigebiet"))+
