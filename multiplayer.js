@@ -101,7 +101,7 @@
   }
   function commonHeader() {
     return pageTop(isHost()?"Spielleitung":(own()?.name||"Ihr Skigebiet"))+
-      '<div class="panel" style="margin-bottom:16px"><div class="net-flex"><div><span class="net-muted">Spielcode</span><div class="net-code">'+html(room.code)+'</div></div><div><span class="net-muted">Saison</span><h3>'+room.season+' / 5</h3></div><div>'+leaveButton()+'</div></div></div>';
+      '<div class="panel" style="margin-bottom:16px"><div class="net-flex"><div><span class="net-muted">Spielcode</span><div class="net-code">'+html(room.code)+'</div></div><div><span class="net-muted">Saison</span><h3>'+room.season+' / 5</h3></div><div class="net-flex">'+(isHost()?'<a class="btn alt" target="_blank" rel="noopener" href="?dashboard=1&amp;code='+encodeURIComponent(room.code)+'">Beamer-Dashboard öffnen</a>':'')+leaveButton()+'</div></div></div>';
   }
   function namesAndReady(){
     return (room.teams||[]).map(t=>'<div class="net-item net-flex"><div><strong>Skigebiet '+t.slot+': '+html(t.name)+'</strong><span class="net-muted">'+(room.phase==="decision"?(t.ready?"Entscheidungen eingereicht":"Entscheidungen ausstehend"):"Teilnahme bestätigt")+'</span></div><span class="net-flag '+(room.phase==="decision"&&!t.ready?"wait":"")+'">'+(room.phase==="decision"?(t.ready?"Bereit":"Offen"):"Beigetreten")+'</span></div>').join("");
@@ -310,7 +310,7 @@
       if(changed)showPage();
       else {
         lastVersion=room.version;
-        if(room.phase==="decision"){refreshTimer();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";}}
+        if(room.phase==="decision"){refreshTimer();if(!isHost()&&!isProjector()&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";}}
         
       }
       if(isHost()&&room.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)await finishSeason();
@@ -351,10 +351,13 @@
   }
   function start(){
     installStyle();
-    session=stored();
+    let dashboardRequested=false;
+    try{dashboardRequested=new URLSearchParams(location.search).has("dashboard");}catch{}
+    if(dashboardRequested&&!sessionStorage.getItem(PROJECTOR_KEY)){session=null;homepage();}
+    else{session=stored();}
     if(session&&session.code&&(session.token||(session.role==="projector"&&session.pin))){app().innerHTML='<section class="panel"><h2>Spielverbindung wird wiederhergestellt</h2><p>Verbinde mit Supabase und lade den aktuellen Spielstand …</p><button class="btn alt" id="netLeave">Zur Startseite</button>'+msgBox();bindLeave();refresh(true);}
-    else {clearSession();homepage();}
-    setInterval(()=>{if(!session)return;refreshTimer();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)finishSeason();},500);
+    else if(!dashboardRequested){clearSession();homepage();}
+    setInterval(()=>{if(!session)return;refreshTimer();if(!isHost()&&!isProjector()&&room?.phase==="decision"&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)finishSeason();},500);
     setInterval(()=>{if(session&&!polling&&!working)refresh(false);},1900);
   }
   document.addEventListener("DOMContentLoaded",start);
