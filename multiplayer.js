@@ -67,7 +67,7 @@
   }
   function msgBox(){return '<p id="netMessage" class="net-error" role="status">'+html(message)+'</p>';}
   function leaveButton(){return '<button class="btn alt" id="netLeave">Verbindung verlassen</button>';}
-  function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{if(confirm("Dieses Gerät vom Spiel trennen? Die Spielrunde bleibt gespeichert.")){clearSession();homepage();}};}
+  function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{const warning=isHost()?"Spielleitungszugang auf diesem Gerät verlassen? Der Zugangstoken wird gelöscht. Ohne ihn können Sie diese Runde nicht weiter steuern.":"Diese Ansicht verlassen? Die Spielrunde bleibt gespeichert.";if(confirm(warning)){clearSession();homepage();}};}
   function homepage() {
     room=null;lastView="home";lastVersion=-1;
     const head=get("headState");if(head)head.textContent="Startseite";
