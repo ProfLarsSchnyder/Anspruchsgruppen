@@ -196,8 +196,8 @@ begin
  if (select count(*) from am_private.teams where room_id=v_room.id)<>3
  then raise exception 'Drei Teams erforderlich'; end if;
  for v_team in select * from am_private.teams where room_id=v_room.id order by slot for update loop
-  select item into v_entry from jsonb_array_elements(p_states) item
-   where item->>'slot'=v_team.slot::text limit 1;
+  select x.entry into v_entry from jsonb_array_elements(p_states) as x(entry)
+   where x.entry->>'slot'=v_team.slot::text limit 1;
   if v_entry is null or jsonb_typeof(v_entry->'state')<>'object'
   then raise exception 'Teamresultat fehlt oder ist ungültig'; end if;
   update am_private.teams set state=v_entry->'state',ready=false,choice='{}'::jsonb,updated_at=now()
