@@ -7,13 +7,14 @@
 4. Online-Version öffnen: https://proflarsschnyder.github.io/Anspruchsgruppen/
 
 ## Rollen und Start
-- **Spiel erstellen:** Jede Person kann ohne Passwort eine Online-Runde erzeugen. Die Person, welche die Runde erstellt, erhält **den exklusiven Steuerungszugang** und bleibt für die Dauer des Spiels mit dieser Browser-Ansicht verbunden.
-- **Spiel beitreten:** Drei echte Teams wählen je ein eigenes Skigebiet und geben den gemeinsamen sechsstelligen Spielcode ein. Pro Team am besten ein Gerät verwenden.
-- **Lehrpersonen-Dashboard:** Auf der Startseite «Lehrpersonen-Dashboard» wählen, Spielcode und das vereinbarte **vierstellige Passwort** eingeben. Alternativ aus der Spielleitung die Beamer-Ansicht in einem neuen Tab öffnen. Die Ansicht ist **schreibgeschützt** und eignet sich zum Projizieren.
-- Die Dashboard-Zugriffsprüfung erfolgt in der Supabase-Datenbank. Ein vierstelliger PIN ist eine einfache Unterrichtszugangssperre, keine starke Sicherheitsmassnahme. Deshalb werden darüber keinerlei privaten Zugangstokens oder Team-Entscheidungsentwürfe ausgegeben.
+- **Lehrpersonen-Dashboard:** Auf der öffentlichen Startseite «Lehrpersonen-Dashboard» wählen und das Lehrpersonen-Passwort **4208** eingeben. Erst nach dieser Anmeldung erscheint **Neue Spielrunde**.
+- **Spiel erstellen:** Nur über das Lehrpersonen-Dashboard. Die Supabase-Datenbank verlangt auch beim direkten API-Aufruf das richtige Passwort. Nach der Erstellung erhält die Lehrperson den geheimen Steuerungszugang und einen sechsstelligen Spielcode.
+- **Spiel beitreten:** Drei echte Teams wählen auf der öffentlichen Startseite ein Skigebiet und geben den Spielcode ein. Dafür ist kein Passwort nötig.
+- **Beamer-Ansicht:** Innerhalb der Spielleitung «Beamer-Dashboard öffnen» wählen und im neuen Tab mit dem Lehrpersonen-Passwort anmelden. Dort den Spielcode eingeben; alternativ im Lehrpersonen-Dashboard «Bestehende Spielrunde anzeigen» wählen. Die Beamer-Ansicht bleibt **schreibgeschützt**.
+- **Schutz:** Das vierstellige Passwort ist eine einfache Unterrichtszugangssperre, keine starke Benutzer-Authentifizierung. Der geheime Steuerungstoken wird nie über die öffentliche Beamer-Abfrage ausgegeben.
 
 ## Eine vollständige Spielrunde
-1. Alle drei Teams treten bei; Spielleitung klickt **Spiel starten**.
+1. Die Lehrperson meldet sich im Dashboard an und erstellt die Online-Spielrunde. Danach treten alle drei Teams bei; die Spielleitung klickt **Spiel starten**.
 2. Das gemeinsame Saisonereignis erscheint auf allen Geräten und im Dashboard.
 3. Die Spielleitung klickt **Strategiephase starten**. Der serverseitig terminierte Countdown beträgt vier Minuten.
 4. Die Teams können ihre eigenen Entscheidungen speichern und bis zum Zeitablauf aktualisieren. Nach Ablauf werden weitere Änderungen vom Server abgelehnt.
@@ -25,15 +26,16 @@
 - Die Browser aktualisieren den Spielzustand etwa alle zwei Sekunden. Bei langsamem Internet können kurze Verzögerungen auftreten.
 - Das **Spielleitungsgerät muss geöffnet bleiben**, damit die Saison nach Ablauf des Countdowns zentral berechnet wird. Die Beamer-Ansicht ist absichtlich nicht dazu berechtigt, Ergebnisse zu berechnen oder Spielphasen zu verändern.
 - Der Steuerungszugang wird im lokalen Speicher des Spielleitungsbrowsers gespeichert; ein normales Neuladen ist möglich. Wer «Verbindung verlassen» wählt, löscht diesen Zugang auf dem Gerät. Bitte nicht vor Spielende tun.
-- Das Dashboard speichert seinen PIN nur im temporären Tab-Speicher und besitzt keine Schreibrechte.
+- Die Anmeldung im Lehrpersonen-Dashboard wird serverseitig geprüft. Das Passwort für die Spiel-Erstellung wird nur vorübergehend im Arbeitsspeicher gehalten. Der Beamer-Tab speichert seinen Zugang nur im temporären Tab-Speicher und besitzt keine Schreibrechte.
 - Das Spiel ist nur für **drei echte Teams** ausgelegt. Es wurden keine Computerteams und kein neuer Solo-Testmodus eingebaut.
-- **Lokale Demo** ist ein gesonderter, bereits bestehender Ein-Gerät-Testmodus; er benutzt Supabase nicht.
+- **Lokale Demo** ist nur im angemeldeten Lehrpersonen-Dashboard erreichbar, verwendet keine Online-Datenbank und bleibt von den Spielrunden getrennt.
 - Aus den Erfahrungen einer ersten echten Unterrichtsrunde können spätere kleinere Verbesserungen entstehen. Die Wirtschaftssimulation bleibt vorerst unverändert.
 
 ## Prüfliste vor dem ersten Unterricht
 - SQL-Editor meldet Erfolg und die Funktion `am_projector_room` ist verfügbar.
-- Startseite lässt eine Runde ohne Lehrpersonen-Passwort erstellen.
-- Beamer-Dashboard öffnet sich nur mit korrektem Passwort.
+- Auf der Startseite können Lernende nur beitreten. Eine neue Spielrunde lässt sich erst nach Eingabe des Lehrpersonen-Passworts erstellen.
+- Die Datenbank enthält keine ungeschützte alte Funktion `am_create_room(text)` mehr.
+- Lehrpersonen-Dashboard und Beamer-Ansicht öffnen sich nur mit korrektem Passwort.
 - Alle drei Skigebiete sind auf unterschiedlichen Geräten beigetreten.
 - Gleicher Countdown auf allen Geräten, automatische Sperre nach Zeitablauf.
 - Saisonergebnisse und Schlussrangliste stimmen auf allen Geräten überein.
