@@ -76,7 +76,7 @@ const SEGMENT_MARKET=[{name:"Familien",share:.34,elasticity:1.05},{name:"Junge E
 function capacityOf(s,d){return Math.max(42000,90000+(d.staff-60)*1250+(s.assets.lift||0)*8000)}
 function appeal(t,segment,e){
  const d=t.pick,s=t.state;
- const price=Math.pow(65/d.price,segment.elasticity)*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+ // Unter CHF 65 nimmt der zusätzliche Werbeeffekt einer Preissenkung ab.\n const price=Math.pow(65/d.price,segment.elasticity*(d.price<65?.68:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
  const quality=clamp(.75+(s.quality-75)*.012+.028*s.assets.lift+.018*s.assets.service,.55,1.65)*(s.assets.lift&&s.assets.service?.965:1);
  const staffRatio=d.staff/Math.max(50,s.guests/1450);
  const service=clamp(.68+.31*staffRatio,.64,1.2);
@@ -108,7 +108,17 @@ function marketDemand(teams,e){
  }
  // Überzählige Nachfrage wird soweit möglich bei Skigebieten mit freien Plätzen verteilt.
  let available=result.map((v,i)=>Math.min(v,capacity[i]));
- let remaining=.38*Math.max(0,result.reduce((a,b)=>a+b,0)-available.reduce((a,b)=>a+b,0));
+ // Gäste, die ein besonders günstiges, aber ausgebuchtes Gebiet nicht aufnehmen kann,
+ // wechseln häufiger zu anderen Skigebieten statt ganz aus dem Markt zu verschwinden.
+ // Für normale Preise bleibt die bisherige Umverteilungsquote von 38 % unverändert.
+ const overflow=result.map((v,i)=>Math.max(0,v-capacity[i]));
+ let remaining=overflow.reduce((sum,excess,i)=>{
+   const price=teams[i].pick.price;
+   const rivals=teams.filter((t,j)=>j!==i&&!t.state.bankrupt).map(t=>t.pick.price);
+   const rivalAvg=rivals.length?rivals.reduce((a,b)=>a+b,0)/rivals.length:price;
+   const discount=price<65?clamp((Math.min(65,rivalAvg)-price)/15,0,1):0;
+   return sum+excess*(.38+.50*discount);
+ },0);
  const weights=teams.map(t=>t.state.bankrupt?0:SEGMENT_MARKET.reduce((x,seg)=>x+seg.share*appeal(t,seg,e),0));
  for(let step=0;step<8&&remaining>0.1;step++){
    const free=available.map((v,i)=>Math.max(0,capacity[i]-v));
