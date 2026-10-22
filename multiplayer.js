@@ -341,8 +341,9 @@
         t.state=teams[i].state&&Object.keys(teams[i].state).length?clone(teams[i].state):clone(START);
         t.pick=teams[i].choice&&Object.keys(teams[i].choice).length?Object.assign(defaults(t.state),teams[i].choice):defaults(t.state);
       });
-      const oldReport=showReport;showReport=()=>{};
-      try{runSeason();}finally{showReport=oldReport;}
+      const oldReport=showReport,oldLocalSave=save;
+      showReport=()=>{};save=()=>{}; // Online-Simulation nicht versehentlich in die lokale Demo speichern.
+      try{runSeason();}finally{showReport=oldReport;save=oldLocalSave;}
       const results=game.teams.map((t,i)=>({slot:i+1,state:t.state,score:score(t).total,solvent:score(t).solvent}));
       await rpc("am_publish_results",{p_code:session.code,p_token:session.token,p_states:results});
       room=null;await refresh(true);
