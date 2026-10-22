@@ -216,6 +216,38 @@ begin
  return jsonb_build_object('ok',true,'season',v_room.season,'results',v_summary);
 end; $$;
 
+-- 7. Read-only Beamer-Dashboard, geschützt durch den festgelegten Lehrpersonen-PIN.
+-- Der PIN erteilt niemals Schreibrechte und verrät keine Team-Zugangstokens.
+-- Hinweis: Ein vierstelliger PIN ist nur eine einfache Unterrichtszugangssperre.
+create or replace function public.am_projector_room(p_code text,p_pin text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $
+declare v_room am_private.rooms%rowtype;
+begin
+ if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
+ then raise exception 'Dashboard-Passwort ungültig'; end if;
+ select * into v_room from am_private.rooms where code=upper(trim(p_code));
+ if not found then raise exception 'Spielcode nicht gefunden'; end if;
+ return jsonb_build_object(
+   'code',v_room.code,'title',v_room.title,'role','projector',
+   'season',v_room.season,'phase',v_room.phase,
+   'deadline',v_room.deadline,'version',v_room.version,'results',v_room.results,
+   'teams',coalesce((
+    select jsonb_agg(jsonb_build_object(
+      'slot',t.slot,'name',t.name,'ready',t.ready,
+      'stats',case when t.state <> '{}'::jsonb then jsonb_build_object(
+        'cash',t.state->'cash','debt',t.state->'debt',
+        'guests',t.state->'guests','totalProfit',t.state->'totalProfit',
+        'stake',t.state->'stake','quality',t.state->'quality',
+        'assets',t.state->'assets','history',t.state->'history',
+        'bankrupt',t.state->'bankrupt'
+      ) else null end
+    ) order by t.slot)
+    from am_private.teams t where t.room_id=v_room.id
+   ),'[]'::jsonb)
+ );
+end; $;
+
 -- API-Rechte: niemals private Tabellen freigeben!
 revoke all on function public.am_create_room(text) from public,anon,authenticated;
 revoke all on function public.am_join_room(text,integer,text) from public,anon,authenticated;
@@ -229,6 +261,8 @@ grant execute on function public.am_read_room(text,text) to anon,authenticated;
 grant execute on function public.am_save_choice(text,text,jsonb) to anon,authenticated;
 grant execute on function public.am_control(text,text,text) to anon,authenticated;
 grant execute on function public.am_publish_results(text,text,jsonb) to anon,authenticated;
+revoke all on function public.am_projector_room(text,text) from public,anon,authenticated;
+grant execute on function public.am_projector_room(text,text) to anon,authenticated;
 
 -- Optionaler Funktionstest im SQL Editor:
 -- select public.am_create_room('Test AlpenManager');
