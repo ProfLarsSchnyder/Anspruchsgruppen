@@ -76,7 +76,8 @@ const SEGMENT_MARKET=[{name:"Familien",share:.34,elasticity:1.05},{name:"Junge E
 function capacityOf(s,d){return Math.max(42000,90000+(d.staff-60)*1250+(s.assets.lift||0)*8000)}
 function appeal(t,segment,e){
  const d=t.pick,s=t.state;
- // Unter CHF 65 nimmt der zusätzliche Werbeeffekt einer Preissenkung ab.\n const price=Math.pow(65/d.price,segment.elasticity*(d.price<65?.68:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+ // Unter CHF 65 nimmt der zusätzliche Werbeeffekt einer Preissenkung ab.
+ const price=Math.pow(65/d.price,segment.elasticity*(d.price<65?.68:1))*Math.exp(-.020*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
  const quality=clamp(.75+(s.quality-75)*.012+.028*s.assets.lift+.018*s.assets.service,.55,1.65)*(s.assets.lift&&s.assets.service?.965:1);
  const staffRatio=d.staff/Math.max(50,s.guests/1450);
  const service=clamp(.68+.31*staffRatio,.64,1.2);
@@ -98,6 +99,8 @@ function appeal(t,segment,e){
 }
 function marketDemand(teams,e){
  const result=teams.map(()=>0);
+ const induced=teams.map(()=>0);
+ let extraMarket=0;
  const capacity=teams.map(t=>t.state.bankrupt?0:capacityOf(t.state,t.pick));
  // Die vier Zielgruppen verteilen sich zunächst nach Attraktivität auf die Skigebiete.
  for(const segment of SEGMENT_MARKET){
@@ -105,6 +108,21 @@ function marketDemand(teams,e){
   const sum=scores.reduce((a,b)=>a+b,0);
   if(sum===0)continue;
   teams.forEach((t,i)=>{result[i]+=240000*e.demand*segment.share*scores[i]/sum});
+  // Neue Skifahrer statt ausschliesslich Abwerbung: Günstige Preise wecken
+  // zusätzliche Nachfrage ausserhalb der bisherigen 240'000 potenziellen Gäste.
+  // Die Wirkung sättigt sich, wenn mehrere Gebiete gleichzeitig günstig sind.
+  const discounted=teams.map(t=>t.state.bankrupt?0:clamp((65-t.pick.price)/25,0,1));
+  const marketActivation=discounted.map(d=>.10*d*segment.elasticity/1.05);
+  const newlyInterested=240000*e.demand*segment.share*(1-marketActivation.reduce((p,v)=>p*(1-v),1));
+  const weights=teams.map((t,i)=>scores[i]*marketActivation[i]);
+  const totalWeight=weights.reduce((a,b)=>a+b,0);
+  if(totalWeight>0){
+   extraMarket+=newlyInterested;
+   teams.forEach((t,i)=>{
+    const newGuests=newlyInterested*weights[i]/totalWeight;
+    induced[i]+=newGuests;result[i]+=newGuests;
+   });
+  }
  }
  // Überzählige Nachfrage wird soweit möglich bei Skigebieten mit freien Plätzen verteilt.
  let available=result.map((v,i)=>Math.min(v,capacity[i]));
@@ -129,7 +147,7 @@ function marketDemand(teams,e){
    if(added<0.01)break;
    remaining=Math.max(0,remaining-added);
  }
- return {allocated:available,original:result,capacity,unserved:remaining};
+ return {allocated:available,original:result,capacity,unserved:remaining,induced,extraMarket};
 }
 function runSeason(){clearInterval(ticking);game.teams.forEach(t=>{if(!canBuyInvestment(t.state,t.pick.investment))t.pick.investment="none"});const e=EVENTS[game.season-1];const projected=game.teams.map(t=>{const state=clone(t.state);if(t.pick.investment!=="none"){state.assets[t.pick.investment]++;if(t.pick.investment==="lift")state.quality=clamp(state.quality+7,0,100);}return {...t,state}});const market=marketDemand(projected,e);const outputs=game.teams.map((t,i)=>{const d=t.pick,s=t.state;let ns=clone(s);let news=[];
 if(s.bankrupt){
@@ -138,7 +156,9 @@ if(s.bankrupt){
   ns.history.push({season:game.season,guests:0,profit:0,cash:round(ns.cash),stake:[...ns.stake],price:d.price});
   ns.last={capacity:0,potential:0,rejected:0,profit:0,revenue:0,cost:0,tickets:0,extras:0,salary:0,energy:0,operating:0,marketing:0,maintenance:0,interest:0,investment:0,cashBefore:round(s.cash),borrowing:0,guests:0,delta:[0,0,0,0,0,0,0],news:["Der Betrieb ist wegen Zahlungsunfähigkeit eingestellt. Das Skigebiet nimmt nicht mehr am Gästemarkt teil."],before:s};
   return ns;
-}const delta=[0,0,0,0,0,0,0];const effect=(ix,n,msg)=>{delta[ix]+=n;if(msg)news.push(msg)};let guestPotential=market.original[i];let capacity=market.capacity[i];let guests=market.allocated[i];const guestsBeforeSeasonEffects=guests;const transferredGuests=Math.max(0,Math.min(capacity,market.allocated[i])-Math.min(capacity,market.original[i]));const rejected=Math.max(0,round(guestPotential-capacity));if(guestPotential>capacity){news.push("Kapazitätsgrenze: "+round(guestPotential).toLocaleString("de-CH")+" potenzielle Gäste, aber nur "+round(capacity).toLocaleString("de-CH")+" verfügbare Plätze. Mehr Personal oder ein Liftausbau kann die Kapazität erhöhen.");}if(e.snow){const snowMultiplier=.90+.095*projected[i].state.assets.snow;guests*=Math.min(1,snowMultiplier);if(projected[i].state.assets.snow)news.push("Beschneiungsinvestitionen mildern den Schneemangel.");else news.push("Schneemangel reduziert die Nachfrage spürbar.");}if(s.stake[1]<40){guests*=.94;news.push("Sehr unzufriedenes Personal führt zu schlechterem Service und weniger Gästen.");}if(e.staff&&s.stake[1]<55){guests*=projected[i].state.assets.staffHome?.96:.90;news.push("Unzufriedenes Personal aus früheren Saisons erschwert den Betrieb während des Fachkräftemangels.");}ns.delayed=[];if(s.delayed.length){for(const x of s.delayed){if(x.when===game.season){guests*=x.guestFactor||1;ns.quality=clamp(ns.quality+(x.quality||0),0,100);effect(x.group,x.points,x.message)}else ns.delayed.push(x)}}ns.delayed=ns.delayed.filter(x=>x.when>game.season);const item=INVEST.find(x=>x.id===d.investment),invest=item?item.price:0; if(item){ns.assets[item.id]++;news.push("Investition in "+item.name+": "+money(invest)+" Liquiditätsabfluss. Die Anlage verursacht auch laufende Betriebskosten.");if(item.id==="lift"){news.push("Neue Lifte erhöhen sofort die Kapazität und die Attraktivität.");ns.quality=clamp(ns.quality+7,0,100);effect(0,4,"Moderne Lifte verbessern den Komfort.");}if(item.id==="eco"){news.push("Energiesparmassnahmen senken ab dieser Saison den Energieaufwand.");effect(5,8,"Umweltinvestitionen stärken das öffentliche Vertrauen.");effect(4,5,"Die Behörden begrüssen die umweltfreundliche Infrastruktur.");}if(item.id==="snow"){news.push("Die Beschneiungsanlage schützt bei schneearmen Wintern vor Gästeausfällen.");effect(0,3);effect(5,-5,"Beschneiung verbessert die Schneesicherheit, belastet aber die Umwelt.");}if(item.id==="service"){effect(0,5);news.push("Das modernisierte Restaurant erhöht ab dieser Saison die Nebeneinnahmen pro Gast.");}
+}const delta=[0,0,0,0,0,0,0];const effect=(ix,n,msg)=>{delta[ix]+=n;if(msg)news.push(msg)};let guestPotential=market.original[i];let capacity=market.capacity[i];let guests=market.allocated[i];const guestsBeforeSeasonEffects=guests;const newSkiersDemand=market.induced[i]||0;const transferredGuests=Math.max(0,Math.min(capacity,market.allocated[i])-Math.min(capacity,market.original[i]));const rejected=Math.max(0,round(guestPotential-capacity));
+if(newSkiersDemand>50)news.push("Günstige Skipässe sprechen auch Menschen an, die sonst nicht Ski gefahren wären. Zusätzliche Interessenten erhöhen die Nachfrage, soweit genügend Kapazität vorhanden ist.");
+if(guestPotential>capacity){news.push("Kapazitätsgrenze: "+round(guestPotential).toLocaleString("de-CH")+" potenzielle Gäste, aber nur "+round(capacity).toLocaleString("de-CH")+" verfügbare Plätze. Mehr Personal oder ein Liftausbau kann die Kapazität erhöhen.");}if(e.snow){const snowMultiplier=.90+.095*projected[i].state.assets.snow;guests*=Math.min(1,snowMultiplier);if(projected[i].state.assets.snow)news.push("Beschneiungsinvestitionen mildern den Schneemangel.");else news.push("Schneemangel reduziert die Nachfrage spürbar.");}if(s.stake[1]<40){guests*=.94;news.push("Sehr unzufriedenes Personal führt zu schlechterem Service und weniger Gästen.");}if(e.staff&&s.stake[1]<55){guests*=projected[i].state.assets.staffHome?.96:.90;news.push("Unzufriedenes Personal aus früheren Saisons erschwert den Betrieb während des Fachkräftemangels.");}ns.delayed=[];if(s.delayed.length){for(const x of s.delayed){if(x.when===game.season){guests*=x.guestFactor||1;ns.quality=clamp(ns.quality+(x.quality||0),0,100);effect(x.group,x.points,x.message)}else ns.delayed.push(x)}}ns.delayed=ns.delayed.filter(x=>x.when>game.season);const item=INVEST.find(x=>x.id===d.investment),invest=item?item.price:0; if(item){ns.assets[item.id]++;news.push("Investition in "+item.name+": "+money(invest)+" Liquiditätsabfluss. Die Anlage verursacht auch laufende Betriebskosten.");if(item.id==="lift"){news.push("Neue Lifte erhöhen sofort die Kapazität und die Attraktivität.");ns.quality=clamp(ns.quality+7,0,100);effect(0,4,"Moderne Lifte verbessern den Komfort.");}if(item.id==="eco"){news.push("Energiesparmassnahmen senken ab dieser Saison den Energieaufwand.");effect(5,8,"Umweltinvestitionen stärken das öffentliche Vertrauen.");effect(4,5,"Die Behörden begrüssen die umweltfreundliche Infrastruktur.");}if(item.id==="snow"){news.push("Die Beschneiungsanlage schützt bei schneearmen Wintern vor Gästeausfällen.");effect(0,3);effect(5,-5,"Beschneiung verbessert die Schneesicherheit, belastet aber die Umwelt.");}if(item.id==="service"){effect(0,5);news.push("Das modernisierte Restaurant erhöht ab dieser Saison die Nebeneinnahmen pro Gast.");}
 if(item.id==="family"){effect(0,5,"Das Kinderland verbessert das Familienangebot und die Gästebindung.");effect(5,1);news.push("Familienpark: mehr Anziehungskraft auf Familien und zusätzliche Nebeneinnahmen.");}
 if(item.id==="staffHome"){effect(1,12,"Personalunterkünfte verbessern die Arbeitsbedingungen und Personalbindung.");effect(5,2);news.push("Personalunterkünfte: besserer Service und geringeres Risiko bei Fachkräftemangel.");}
 if(item.id==="shuttle"){effect(0,3,"Der Shuttle verbessert die Erreichbarkeit des Skigebiets.");effect(5,7,"Umweltfreundliche Anreise verbessert das öffentliche Vertrauen.");effect(4,3);news.push("ÖV-Shuttle: bessere Anreise für Gäste und weniger Autoverkehr.");}
@@ -161,7 +181,7 @@ if(d.supplier==="günstig"&&s.stake[3]<63&&game.season<5)ns.delayed.push({when:g
 ns.quality=clamp(ns.quality+maintenanceQuality,0,100);
 effect(0,clamp(maintenanceQuality*.55,-3,2),maintenanceQuality< -2?"Zu wenig Wartung lässt die Infrastruktur schrittweise verschleissen.":maintenanceQuality>1?"Höhere Wartungsausgaben verbessern den Anlagenzustand schrittweise.":null);
 if(d.maintenance<120000&&game.season<5){const penalty=clamp((120000-d.maintenance)/1800000,0,.04);ns.delayed.push({when:game.season+1,guestFactor:1-penalty,group:0,points:-Math.max(1,Math.round(penalty*90)),message:"Zu geringe Wartung in der Vorsaison führt zu Einschränkungen und weniger Gästen."});}
-if(d.staff<s.staff-5&&game.season<5)ns.delayed.push({when:game.season+1,guestFactor:.94,group:1,points:-5,message:"Starker Personalabbau aus der vorherigen Saison führt jetzt zu Engpässen."});for(let k=0;k<7;k++)ns.stake[k]=clamp(ns.stake[k]+delta[k]*.8-1,0,100);ns.quality=clamp(ns.quality,5,100);ns.history.push({season:game.season,guests:ns.guests,profit:round(profit),cash:round(ns.cash),stake:[...ns.stake],price:d.price});ns.last={capacity:round(capacity),potential:round(guestPotential),rejected,preEventGuests:round(guestsBeforeSeasonEffects),transferredGuests:round(transferredGuests),seasonLossGuests:round(Math.max(0,guestsBeforeSeasonEffects-guests)),maintenanceQuality:Math.round(maintenanceQuality*10)/10,supplierRiskCost:round(supplierRiskCost),decision:clone(d),profit:round(profit),revenue:round(rev),cost:round(rev-profit),tickets:round(tickets),extras:round(extras),salary:round(salary),energy:round(fuel),operating:round(operating),marketing:round(d.marketing),maintenance:round(maintenance),interest:round(interest),investment:round(invest),cashBefore:round(cashBefore),borrowing:round(borrowing),guests:round(guests),delta:delta.map(round),news:[...new Set(news)].slice(0,8),before:s};return ns});game.teams.forEach((t,i)=>{t.state=outputs[i];t.ready=false;t.pick=defaults(t.state)});save();showReport()}
+if(d.staff<s.staff-5&&game.season<5)ns.delayed.push({when:game.season+1,guestFactor:.94,group:1,points:-5,message:"Starker Personalabbau aus der vorherigen Saison führt jetzt zu Engpässen."});for(let k=0;k<7;k++)ns.stake[k]=clamp(ns.stake[k]+delta[k]*.8-1,0,100);ns.quality=clamp(ns.quality,5,100);ns.history.push({season:game.season,guests:ns.guests,profit:round(profit),cash:round(ns.cash),stake:[...ns.stake],price:d.price});ns.last={capacity:round(capacity),potential:round(guestPotential),rejected,inducedDemand:round(newSkiersDemand),marketNewDemand:round(market.extraMarket),preEventGuests:round(guestsBeforeSeasonEffects),transferredGuests:round(transferredGuests),seasonLossGuests:round(Math.max(0,guestsBeforeSeasonEffects-guests)),maintenanceQuality:Math.round(maintenanceQuality*10)/10,supplierRiskCost:round(supplierRiskCost),decision:clone(d),profit:round(profit),revenue:round(rev),cost:round(rev-profit),tickets:round(tickets),extras:round(extras),salary:round(salary),energy:round(fuel),operating:round(operating),marketing:round(d.marketing),maintenance:round(maintenance),interest:round(interest),investment:round(invest),cashBefore:round(cashBefore),borrowing:round(borrowing),guests:round(guests),delta:delta.map(round),news:[...new Set(news)].slice(0,8),before:s};return ns});game.teams.forEach((t,i)=>{t.state=outputs[i];t.ready=false;t.pick=defaults(t.state)});save();showReport()}
 function decisionImpact(l,s){
  const d=l.decision||{price:s.price,staff:s.staff,wage:s.wage,marketing:s.marketing,maintenance:s.maintenance,segment:"–",supplier:"–",investment:"none"};
  const fmt=v=>Math.round(v||0).toLocaleString("de-CH");
@@ -171,6 +191,7 @@ function decisionImpact(l,s){
  const row=(factor,result,meaning)=>'<tr><td>'+factor+'</td><td><strong>'+result+'</strong></td><td>'+meaning+'</td></tr>';
  return '<section class="panel" style="margin-top:16px"><h3>So wirkten Ihre Entscheidungen</h3><p class="hint">Die Faktoren wirken zusammen. Einzelne Massnahmen können deshalb nicht als exakte, isolierte Umsatzgewinne ausgewiesen werden.</p><table><thead><tr><th>Faktor</th><th>Ergebnis</th><th>Wirkung</th></tr></thead><tbody>'+
  row("Marktnachfrage",fmt(l.potential)+" Gäste","Abhängig von Preisen, Qualität, Werbung und Konkurrenz.")+
+ row("Neue Skifahrer durch günstige Preise",fmt(l.inducedDemand||0)+" Interessenten","Zusätzliche Nachfrage für Ihr Skigebiet, die nicht einfach von anderen Skigebieten abgeworben wird. Die tatsächlichen Gäste bleiben durch die Kapazität begrenzt.")+
  row("Übernommene Gäste",fmt(l.transferredGuests)+" Gäste","Zusätzliche Gäste von ausgebuchten Skigebieten.")+
  row("Kapazitätsgrenze",fmt(l.capacity)+" Gäste","Abhängig von Personal und Liftanlagen.")+
  row("Wetter und frühere Folgen","−"+fmt(l.seasonLossGuests)+" Gäste","Verluste durch Saisonereignis, Mitarbeiterzufriedenheit und frühere Entscheidungen.")+
