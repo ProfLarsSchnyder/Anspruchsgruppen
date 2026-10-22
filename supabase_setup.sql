@@ -37,12 +37,28 @@ revoke all on schema am_private from public, anon, authenticated;
 revoke all on all tables in schema am_private from public, anon, authenticated;
 revoke all on all sequences in schema am_private from public, anon, authenticated;
 
+-- 1. Lehrpersonen-Zugang: PIN-Prüfung direkt auf dem Server.
+-- Vierstelliger Unterrichtscode, keine vollwertige Benutzer-Authentifizierung.
+create or replace function public.am_verify_teacher(p_pin text)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+begin
+ if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
+ then raise exception 'Lehrpersonen-Passwort ungültig'; end if;
+ return jsonb_build_object('ok',true);
+end; $$;
+
+-- Alte ungeschützte RPC-Signatur unbedingt entfernen!
+drop function if exists public.am_create_room(text);
+
 -- 1. Spielrunde erstellen; die Lehrperson erhält einen geheimen Host-Token.
-create or replace function public.am_create_room(p_title text default 'AlpenManager')
+create or replace function public.am_create_room(p_title text,p_pin text)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
 declare v_code text; v_token text; v_id uuid; v_try integer;
 begin
+ if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
+ then raise exception 'Lehrpersonen-Passwort ungültig'; end if;
  if length(trim(coalesce(p_title,''))) > 60 then raise exception 'Titel ist zu lang'; end if;
  v_token := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
  for v_try in 1..12 loop
@@ -221,7 +237,7 @@ end; $$;
 -- Hinweis: Ein vierstelliger PIN ist nur eine einfache Unterrichtszugangssperre.
 create or replace function public.am_projector_room(p_code text,p_pin text)
 returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_room am_private.rooms%rowtype;
 begin
  if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
@@ -246,16 +262,18 @@ begin
     from am_private.teams t where t.room_id=v_room.id
    ),'[]'::jsonb)
  );
-end; $;
+end; $$;
 
 -- API-Rechte: niemals private Tabellen freigeben!
-revoke all on function public.am_create_room(text) from public,anon,authenticated;
+revoke all on function public.am_verify_teacher(text) from public,anon,authenticated;
+revoke all on function public.am_create_room(text,text) from public,anon,authenticated;
 revoke all on function public.am_join_room(text,integer,text) from public,anon,authenticated;
 revoke all on function public.am_read_room(text,text) from public,anon,authenticated;
 revoke all on function public.am_save_choice(text,text,jsonb) from public,anon,authenticated;
 revoke all on function public.am_control(text,text,text) from public,anon,authenticated;
 revoke all on function public.am_publish_results(text,text,jsonb) from public,anon,authenticated;
-grant execute on function public.am_create_room(text) to anon,authenticated;
+grant execute on function public.am_verify_teacher(text) to anon,authenticated;
+grant execute on function public.am_create_room(text,text) to anon,authenticated;
 grant execute on function public.am_join_room(text,integer,text) to anon,authenticated;
 grant execute on function public.am_read_room(text,text) to anon,authenticated;
 grant execute on function public.am_save_choice(text,text,jsonb) to anon,authenticated;
@@ -265,5 +283,6 @@ revoke all on function public.am_projector_room(text,text) from public,anon,auth
 grant execute on function public.am_projector_room(text,text) to anon,authenticated;
 
 -- Optionaler Funktionstest im SQL Editor:
--- select public.am_create_room('Test AlpenManager');
+-- select public.am_verify_teacher('4208');
+-- select public.am_create_room('Test AlpenManager', '4208');
 -- Achtung: Dies erzeugt einen neuen Test-Spielcode samt geheimem Lehrpersonen-Token.
