@@ -195,10 +195,105 @@
       '<button class="btn" id="netNew" style="margin-top:12px">Zur Startseite</button></section>'+msgBox();
     bindLeave();get("netNew").onclick=()=>{clearSession();homepage()};
   }
+
+  // Beamer-Dashboard: eigene rein lesende Ansicht. Teamentscheidungen werden nie angefordert.
+  const colours=["#16769a","#d88736","#468e69"];
+  function projectorState(t){
+    if(!t||!t.stats||!Array.isArray(t.stats.stake))return null;
+    const s=Object.assign(clone(START),t.stats);
+    s.assets=Object.assign(clone(START.assets),t.stats.assets||{});
+    return s;
+  }
+  function projectorSnapshot(){
+    const teams=(room.teams||[]).map(t=>{
+      const s=projectorState(t);
+      return {slot:t.slot,name:t.name,ready:t.ready,state:s,
+        rating:s?score({state:s}):null,
+        history:s&&Array.isArray(s.history)?s.history:[]};
+    });
+    return teams.sort((a,b)=>Number(b.rating?.solvent||false)-Number(a.rating?.solvent||false)||(b.rating?.total||0)-(a.rating?.total||0));
+  }
+  function projectorShell(title,sub){
+    return '<div class="projector"><div class="net-hero net-flex"><div><span style="font-size:14px;opacity:.8">ALPENMANAGER · LIVE-DASHBOARD</span><h2 style="margin:7px 0 5px">'+html(title)+'</h2><span style="opacity:.82">'+html(sub||"Drei Skigebiete · fünf Saisons")+'</span></div>'+
+      '<div style="text-align:right"><div style="opacity:.8;font-size:13px">SPIELCODE</div><div class="net-code" style="color:white">'+html(room.code)+'</div><div style="opacity:.8;font-size:13px">Saison '+room.season+' von 5</div></div></div>';
+  }
+  function projectorTeams(){
+    return '<div class="net-grid">'+[1,2,3].map(slot=>{
+      const t=teamBySlot(slot);
+      return '<div class="net-stat"><div class="net-muted">SKIGEBIET '+slot+'</div><h3 style="margin:7px 0">'+html(t?.name||"Noch nicht vergeben")+'</h3>'+
+        '<div class="net-flex"><span class="net-flag '+(t&&room.phase==="decision"&&!t.ready?"wait":"")+'">'+
+          (!t?"Nicht beigetreten":room.phase==="decision"?(t.ready?"✓ Eingereicht":"Entscheidung offen"):"✓ Angemeldet")+
+        '</span><span style="font-size:13px;color:#5a7588">Team '+slot+'</span></div></div>';
+    }).join("")+'</div>';
+  }
+  function projectorStanding(){
+    const listed=projectorSnapshot();
+    if(!listed.some(t=>t.rating))return '<section class="panel"><h3>Rangliste</h3><p>Die Ergebnisse erscheinen nach der ersten abgeschlossenen Saison.</p></section>';
+    return '<section class="panel" style="margin-top:16px"><div class="net-flex"><h3>Gesamtwertung bis Saison '+(room.phase==="report"||room.phase==="finished"?room.season:Math.max(1,room.season-1))+'</h3><span class="net-muted">40 % Wirtschaft · 40 % Anspruchsgruppen · 20 % Zukunft</span></div>'+
+      listed.map((t,i)=>{
+        const sc=t.rating;
+        return '<div class="net-score-row"><strong style="font-size:23px">'+(i+1)+'.</strong><div><strong style="font-size:18px">'+html(t.name)+'</strong><div class="net-muted">'+(sc?.solvent?"Gewinnberechtigt":"Nicht gewinnberechtigt")+'</div></div>'+
+        '<strong class="net-big" style="font-size:28px">'+(sc?.total??"–")+'</strong><div class="net-extracol"><div class="net-bartrack"><div class="net-barfill" style="width:'+(sc?.total||0)+'%;background:'+colours[(t.slot-1)%3]+'"></div></div><span class="net-muted">'+money(t.state?.totalProfit||0)+' gesamt</span></div></div>';
+      }).join("")+'</section>';
+  }
+  function projectorResults(){
+    const stats=projectorSnapshot(),hasData=stats.some(t=>t.rating);
+    if(!hasData)return "";
+    let summaries='<section class="panel" style="margin-top:16px"><h3>Wirtschaftliche Kennzahlen</h3><div class="net-grid">'+
+      stats.map(t=>'<div class="net-stat"><div class="net-muted">'+html(t.name)+'</div><strong class="net-big" style="font-size:25px">'+money(t.state?.totalProfit||0)+'</strong>'+
+      '<p class="net-muted">Kumulierter Gewinn / Verlust</p><div class="net-flex"><div><strong>'+num(t.state?.guests)+'</strong><div class="net-muted">Gäste zuletzt</div></div><div><strong>'+money(t.state?.cash||0)+'</strong><div class="net-muted">Kontostand</div></div></div></div>').join("")+'</div></section>';
+    summaries+='<section class="panel" style="margin-top:16px"><h3>Anspruchsgruppen im Vergleich</h3><div class="net-grid">'+
+      stats.map(t=>'<div class="net-stat"><strong>'+html(t.name)+'</strong><div class="net-big" style="margin:8px 0;font-size:30px">'+(t.state?.stake?num(t.state.stake.reduce((a,b)=>a+Number(b),0)/t.state.stake.length):"–")+'/100</div><span class="net-muted">Durchschnittliche Zufriedenheit</span><div class="net-bartrack" style="margin-top:10px"><div class="net-barfill" style="width:'+(t.state?.stake?Math.max(0,Math.min(100,t.state.stake.reduce((a,b)=>a+Number(b),0)/t.state.stake.length)):0)+'%;background:'+colours[t.slot-1]+'"></div></div></div>').join("")+'</div></section>';
+    const chart=projectorChart(stats);
+    if(chart)summaries+='<section class="panel" style="margin-top:16px"><h3>Gewinnentwicklung über die Saisons</h3>'+chart+'</section>';
+    return summaries;
+  }
+  function projectorChart(stats){
+    const valid=stats.filter(t=>t.history.length);
+    if(!valid.length)return "";
+    const W=950,H=260,L=95,R=30,T=22,B=42;
+    const series=valid.map(t=>{let sum=0;return {name:t.name,slot:t.slot,values:[0,...t.history.slice(0,5).map(h=>(sum+=Number(h.profit||0))/1000000)]};});
+    const all=series.flatMap(s=>s.values);
+    const low=Math.min(0,...all),high=Math.max(0,...all),diff=Math.max(1,high-low);
+    const min=low-.12*diff,max=high+.12*diff;
+    const x=i=>L+i*(W-L-R)/5;
+    const y=v=>T+(max-v)/(max-min)*(H-T-B);
+    let svg='<svg class="net-history" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Gewinnentwicklung in Millionen Franken">';
+    for(let k=0;k<=4;k++){const n=min+(max-min)*k/4,yy=y(n);svg+='<line x1="'+L+'" y1="'+yy+'" x2="'+(W-R)+'" y2="'+yy+'" stroke="#dce8ef" stroke-width="1"/><text x="7" y="'+(yy+4)+'" font-size="13" fill="#597386">'+n.toFixed(1)+' Mio.</text>';}
+    for(let k=0;k<=5;k++)svg+='<text x="'+x(k)+'" y="'+(H-10)+'" font-size="14" text-anchor="middle" fill="#597386">'+(k===0?"Start":"Saison "+k)+'</text>';
+    for(const s of series){const points=s.values.map((v,i)=>x(i)+','+y(v)).join(' ');const colour=colours[s.slot-1];svg+='<polyline points="'+points+'" fill="none" stroke="'+colour+'" stroke-width="4" stroke-linejoin="round"/>';for(let i=0;i<s.values.length;i++)svg+='<circle cx="'+x(i)+'" cy="'+y(s.values[i])+'" r="4" fill="'+colour+'"/>';}
+    svg+='</svg>';
+    return svg+'<div class="net-legend">'+series.map(s=>'<span><i class="net-dot" style="background:'+colours[s.slot-1]+'"></i>'+html(s.name)+'</span>').join("")+'</div><p class="net-muted">Kumulierter Saisongewinn in Millionen CHF. Investitionen sind in dieser Gewinnzahl nicht als vollständiger Saisonaufwand verbucht.</p>';
+  }
+  function projectorPage(){
+    const phase=room.phase,desc=phaseNames[phase]||"Online",title=phase==="finished"?"Schlussrangliste":phase==="report"?"Ergebnisse der Saison "+room.season:phase==="decision"?"Strategiephase":phase==="intro"?"Saisonereignis":'Spielrunde vorbereiten';
+    const head=get("headState");if(head)head.textContent="Beamer · Saison "+room.season+"/5";
+    let body=projectorShell(title,desc);
+    body+='<div class="net-flex" style="margin-bottom:14px"><span class="net-tag">Live · nur Anzeige · keine Spielsteuerung</span><div class="net-flex"><button class="btn alt" id="netFull">Vollbild</button>'+leaveButton()+'</div></div>';
+    if(phase==="lobby"){
+      body+='<div class="panel"><h3>Teams beitreten lassen</h3><p>Spielcode auf der Startseite eingeben und eines der drei Skigebiete wählen. Die Spielleitung startet nach dem Beitritt aller Gruppen.</p>'+projectorTeams()+'</div>';
+    }else if(phase==="intro"){
+      const e=EVENTS[room.season-1],photo=EVENT_IMAGES[room.season-1];
+      body+='<div class="event-screen" style="min-height:480px"><div class="event-photo" style="background-image:url(&quot;'+encodeURI(photo)+'&quot;)"></div><div class="event-shade"></div><div class="event-content"><div class="kicker">SAISON '+room.season+'/5 · EILMELDUNG</div><h2>'+html(e.title)+'</h2><p>'+html(e.desc)+'</p><p style="margin-top:16px">Die Spielleitung gibt die gemeinsame Strategiephase frei.</p></div></div>';
+    }else if(phase==="decision"){
+      body+='<section class="panel" style="text-align:center;margin-bottom:16px"><div class="net-muted">VERBLEIBENDE ENTSCHEIDUNGSZEIT</div><div class="net-project-timer" id="netTime">'+formatTimer()+'</div>'+
+        '<p class="net-sub">'+(secondsLeft()>0?"Die drei Skigebiete entscheiden gleichzeitig.":"Zeit abgelaufen. Die Spielleitung berechnet jetzt die Saison.")+'</p></section><section class="panel"><h3>Fortschritt der drei Skigebiete</h3><div id="netReady">'+projectorTeams()+'</div><p class="net-muted" id="netCount">'+room.teams.filter(x=>x.ready).length+' von 3 Teams haben ihre Entscheidungen eingereicht.</p></section>';
+      if(room.season>1)body+=projectorStanding();
+    }else{
+      body+=projectorStanding()+projectorResults();
+      if(phase==="report")body+='<p class="net-note" style="margin-top:14px">Die Spielleitung startet die nächste Saison, sobald die Ergebnisse besprochen sind.</p>';
+      else body+='<div class="panel" style="margin-top:16px"><h3>Reflexion</h3><p>Welche Anspruchsgruppen wurden besonders berücksichtigt? Welche Interessenkonflikte gab es? Wer setzte seine Strategie über fünf Saisons überzeugend um?</p></div>';
+    }
+    app().innerHTML=body+msgBox()+'</div>';
+    bindLeave();
+    const full=get("netFull");if(full)full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch(e){status("Vollbildmodus nicht verfügbar.",true)}};
+  }
+
   function showPage() {
     if(!room||!session){homepage();return}
     installStyle();
-    if(room.phase==="lobby")lobby();
+    if(isProjector())projectorPage();
+    else if(room.phase==="lobby")lobby();
     else if(room.phase==="intro")intro();
     else if(room.phase==="decision"){if(isHost())hostDecisions();else paintDecision();}
     else if(room.phase==="report")report();
@@ -209,18 +304,18 @@
     if(!session||polling)return;
     polling=true;
     try{
-      const fresh=await rpc("am_read_room",{p_code:session.code,p_token:session.token});
+      const fresh=await (isProjector()?rpc("am_projector_room",{p_code:session.code,p_pin:session.pin}):rpc("am_read_room",{p_code:session.code,p_token:session.token}));
       const changed=force||!room||fresh.phase!==lastView||fresh.season!==room.season||((fresh.phase==="lobby"||fresh.phase==="report"||fresh.phase==="finished")&&fresh.version!==room.version);
       room=fresh;message="";
       if(changed)showPage();
       else {
         lastVersion=room.version;
-        if(room.phase==="decision"){refreshTimer();if(isHost())updateReady();}
+        if(room.phase==="decision"){refreshTimer();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";}}
         
       }
       if(isHost()&&room.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)await finishSeason();
     }catch(e){
-      if(/Zugang ungültig/.test(e.message)){clearSession();message="Der gespeicherte Zugang ist nicht mehr gültig.";homepage();}
+      if(/Zugang ungültig|Dashboard-Passwort ungültig/.test(e.message)){clearSession();message="Der gespeicherte Zugang ist nicht mehr gültig.";homepage();}
       else status(e.message,true);
     }finally{polling=false;}
   }
@@ -257,7 +352,7 @@
   function start(){
     installStyle();
     session=stored();
-    if(session&&session.code&&session.token){app().innerHTML='<section class="panel"><h2>Spielverbindung wird wiederhergestellt</h2><p>Verbinde mit Supabase und lade den aktuellen Spielstand …</p><button class="btn alt" id="netLeave">Zur Startseite</button>'+msgBox();bindLeave();refresh(true);}
+    if(session&&session.code&&(session.token||(session.role==="projector"&&session.pin))){app().innerHTML='<section class="panel"><h2>Spielverbindung wird wiederhergestellt</h2><p>Verbinde mit Supabase und lade den aktuellen Spielstand …</p><button class="btn alt" id="netLeave">Zur Startseite</button>'+msgBox();bindLeave();refresh(true);}
     else {clearSession();homepage();}
     setInterval(()=>{if(!session)return;refreshTimer();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)finishSeason();},500);
     setInterval(()=>{if(session&&!polling&&!working)refresh(false);},1900);
