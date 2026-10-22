@@ -229,7 +229,7 @@
   function start(){
     installStyle();
     session=stored();
-    if(session&&session.code&&session.token)refresh(true);
+    if(session&&session.code&&session.token){app().innerHTML='<section class="panel"><h2>Spielverbindung wird wiederhergestellt</h2><p>Verbinde mit Supabase und lade den aktuellen Spielstand …</p><button class="btn alt" id="netLeave">Zur Startseite</button>'+msgBox();bindLeave();refresh(true);}
     else {clearSession();homepage();}
     setInterval(()=>{if(!session)return;refreshTimer();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)finishSeason();},500);
     setInterval(()=>{if(session&&!polling&&!working)refresh(false);},1900);
