@@ -28,14 +28,19 @@ const INVEST=[
 {id:"lift",name:"Moderne Liftanlagen",price:620000,desc:"Mehr Kapazität und Komfort. Langfristig attraktiv für Gäste."},
 {id:"snow",name:"Beschneiungsanlage",price:490000,desc:"Weniger wetterabhängig; hoher Energie- und Wasserbedarf."},
 {id:"eco",name:"Energie- und Umweltpaket",price:360000,desc:"Anfangs teuer, später tiefere Energiekosten und weniger Umweltbelastung."},
-{id:"service",name:"Restaurant und Service",price:280000,desc:"Bessere Gastronomie und höhere Nebenerträge."}
+{id:"service",name:"Restaurant und Service",price:280000,desc:"Bessere Gastronomie und höhere Nebenerträge."},
+{id:"family",name:"Kinderland und Familienpark",price:300000,desc:"Mehr Familien und zusätzliche Einnahmen, aber laufender Unterhalt."},
+{id:"staffHome",name:"Personalunterkünfte",price:340000,desc:"Bessere Arbeitsbedingungen und Personalbindung, aber Unterhaltskosten."},
+{id:"shuttle",name:"ÖV-Shuttle zum Skigebiet",price:240000,desc:"Bessere Anreise ohne Auto, stärkt Umweltvertrauen, kostet im Betrieb."},
+{id:"digital",name:"Digitales Ticketsystem und Pisten-App",price:210000,desc:"Bequeme Buchung und Informationen, besonders für junge Gäste; IT-Kosten."}
 ];
-const START={cash:1500000,debt:900000,shareCapital:2500000,guests:80000,staff:60,price:65,wage:0,quality:75,marketing:100000,maintenance:160000,stake:[70,70,70,70,70,70,70],assets:{lift:0,snow:0,eco:0,service:0},turn:1,totalProfit:0,profits:[],history:[],delayed:[],last:null};
+const START={cash:1500000,debt:900000,shareCapital:2500000,guests:80000,staff:60,price:65,wage:0,quality:75,marketing:100000,maintenance:160000,stake:[70,70,70,70,70,70,70],assets:{lift:0,snow:0,eco:0,service:0,family:0,staffHome:0,shuttle:0,digital:0},turn:1,totalProfit:0,profits:[],history:[],delayed:[],last:null};
 const $=s=>document.querySelector(s);
 const money=n=>"CHF "+Math.round(n).toLocaleString("de-CH");
 const round=n=>Math.round(n);
 const clamp=(x,min,max)=>Math.min(max,Math.max(min,x));
 function clone(x){return JSON.parse(JSON.stringify(x))}
+function canBuyInvestment(s,id){return id==="none"||(INVEST.some(x=>x.id===id)&&!s.assets[id])}
 function defaults(s){return {price:s.price,staff:s.staff,wage:s.wage,marketing:s.marketing,maintenance:s.maintenance,segment:"Familien",supplier:"zuverlässig",investment:"none"}}
 const SEGMENTS=["Familien","Junge Erwachsene","Sportliche Gäste","Premiumgäste"];
 let game=null, settings=null, mode="start", selected=0, ticking=null, ends=0;
