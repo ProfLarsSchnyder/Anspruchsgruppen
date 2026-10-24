@@ -422,8 +422,107 @@
     }catch(e){status("Saisonberechnung: "+e.message,true)}
     finally{working=false}
   }
+
+  // Offline-Vorschau der ECHTEN Lehrer- und Beamer-Oberfläche.
+  // Eigene Beispiel-Partie wird im Speicher simuliert, niemals über Supabase.
+  let previewSnapshots = [], previewPhase = "decision", previewRole = "teacher", previewSeason = 2;
+  function samplePreviewStates(){
+    const savedGame=game, savedShowReport=showReport, savedSave=save;
+    const strategies=[
+      {price:65,staff:65,wage:2,marketing:150000,maintenance:225000,segment:"Familien",supplier:"zuverlässig",invest:["family","lift","digital","service","none"]},
+      {price:75,staff:55,wage:3,marketing:125000,maintenance:250000,segment:"Junge Erwachsene",supplier:"nachhaltig",invest:["eco","shuttle","staffHome","digital","none"]},
+      {price:70,staff:60,wage:0,marketing:100000,maintenance:200000,segment:"Sportliche Gäste",supplier:"zuverlässig",invest:["lift","snow","service","eco","none"]}
+    ];
+    try{
+      game=newGame(["Alpenblick","Schneeglück","Bergzauber"]);
+      showReport=()=>{};save=()=>{};
+      previewSnapshots=[game.teams.map(t=>clone(t.state))];
+      for(let season=1;season<=5;season++){
+        game.season=season;
+        game.teams.forEach((t,i)=>{
+          t.pick={...defaults(t.state),...strategies[i],investment:strategies[i].invest[season-1]||"none"};
+        });
+        runSeason();
+        previewSnapshots.push(game.teams.map(t=>clone(t.state)));
+      }
+    }finally{
+      game=savedGame;showReport=savedShowReport;save=savedSave;
+    }
+  }
+  function previewRoom(){
+    const completed=previewPhase==="finished"?5:previewPhase==="report"?previewSeason:previewPhase==="lobby"?0:previewSeason-1;
+    const states=previewSnapshots[Math.max(0,Math.min(5,completed))];
+    const names=["Alpenblick","Schneeglück","Bergzauber"];
+    const teams=states.map((state,i)=>({
+      slot:i+1,name:names[i],ready:previewPhase==="decision"?i!==2:false,
+      choice:{},state:completed?clone(state):{},
+      stats:completed?clone(state):null
+    }));
+    const results=completed?teams.map(t=>({
+      slot:t.slot,name:t.name,guests:t.state.guests,
+      profit:t.state.last?.profit||0,cash:t.state.cash,
+      score:score({state:t.state}).total,
+      solvent:score({state:t.state}).solvent
+    })):[];
+    return {
+      code:"DEMO01",title:"AlpenManager – Vorschau",phase:previewPhase,
+      season:previewPhase==="finished"?5:previewPhase==="lobby"?1:previewSeason,
+      deadline:previewPhase==="decision"?new Date(Date.now()+240000).toISOString():null,
+      version:1,results,teams
+    };
+  }
+  function renderDemoPreview(){
+    installStyle();
+    session={code:"DEMO01",token:"demo-only",role:previewRole==="projector"?"projector":"host"};
+    room=previewRoom();reportSlot=1;message="";
+    const toolbar=get("demoPreviewToolbar");
+    if(toolbar){
+      toolbar.innerHTML='<div class="demo-preview-label"><strong>DEMO · LEHRPERSONEN-VORSCHAU</strong><small>Beispieldaten · keine Verbindung zu Supabase</small></div>'+
+       '<label>Ansicht <select id="demoPreviewRole"><option value="teacher">Spielleitung</option><option value="projector">Beamer-Dashboard</option></select></label>'+
+       '<label>Spielphase <select id="demoPreviewPhase"><option value="lobby">Warteraum</option><option value="decision">Strategiephase</option><option value="report">Saisonbericht</option><option value="finished">Schlussrangliste</option></select></label>'+
+       '<label>Saison <select id="demoPreviewSeason">'+[1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' / 5</option>').join("")+'</select></label>'+
+       '<a class="btn alt demo-preview-exit" href="?">Zur Startseite</a>';
+      get("demoPreviewRole").value=previewRole;
+      get("demoPreviewPhase").value=previewPhase;
+      get("demoPreviewSeason").value=String(previewSeason);
+      get("demoPreviewSeason").disabled=previewPhase==="lobby"||previewPhase==="finished";
+      get("demoPreviewRole").onchange=()=>{previewRole=get("demoPreviewRole").value;renderDemoPreview()};
+      get("demoPreviewPhase").onchange=()=>{previewPhase=get("demoPreviewPhase").value;renderDemoPreview()};
+      get("demoPreviewSeason").onchange=()=>{previewSeason=Number(get("demoPreviewSeason").value)||2;renderDemoPreview()};
+    }
+    // Originale UI-Komponenten aus dem Mehrspielermodus verwenden.
+    if(previewRole==="projector")projectorPage();
+    else if(previewPhase==="lobby")lobby();
+    else if(previewPhase==="decision")hostDecisions();
+    else if(previewPhase==="report")report();
+    else finished();
+
+    // Sämtliche Aktionen bleiben lokal. Keine Online-RPC oder Speicherung.
+    const leave=get("netLeave");if(leave)leave.onclick=()=>{location.href=location.pathname};
+    const hostLink=app().querySelector('a[href*="dashboard=1"]');
+    if(hostLink){hostLink.href="?demo=projector";hostLink.target="_blank";}
+    const start=get("netStart");if(start)start.onclick=()=>{previewPhase="decision";renderDemoPreview()};
+    const finish=get("netFinish");if(finish){finish.disabled=false;finish.onclick=()=>{previewPhase="report";renderDemoPreview()};}
+    const next=get("netNext");if(next)next.onclick=()=>{previewPhase=previewSeason===5?"finished":"decision";previewSeason=Math.min(5,previewSeason+1);renderDemoPreview()};
+    const again=get("netNew");if(again)again.onclick=()=>{previewPhase="lobby";previewSeason=1;renderDemoPreview()};
+    const marker=get("demoPreviewMarker");if(marker)marker.textContent="VORSCHAU – keine echten Teamdaten";
+  }
+  function openDemoPreview(role){
+    previewRole=role==="projector"?"projector":"teacher";
+    previewSeason=2;
+    previewPhase="decision";
+    samplePreviewStates();
+    const toolbar=document.createElement("div");
+    toolbar.id="demoPreviewToolbar";
+    toolbar.className="demo-preview-toolbar";
+    app().parentNode.insertBefore(toolbar,app());
+    renderDemoPreview();
+  }
+
   function start(){
     installStyle();
+    const demoRole=new URLSearchParams(location.search).get("demo");
+    if(demoRole==="teacher"||demoRole==="projector"){openDemoPreview(demoRole);return;}
     let dashboardRequested=false;
     try{dashboardRequested=new URLSearchParams(location.search).has("dashboard");}catch{}
     if(dashboardRequested&&!sessionStorage.getItem(PROJECTOR_KEY)){session=null;homepage();}
