@@ -243,14 +243,25 @@ grant execute on function public.am_touch_room(text,text) to anon,authenticated;
 -- Supabase Cron löscht auch dann, wenn alle Browser geschlossen sind.
 -- Löschung erfolgt bei der nächsten minütlichen Prüfung nach 5 Minuten.
 -- Teams werden durch ON DELETE CASCADE mitgelöscht.
-create extension if not exists pg_cron with schema pg_catalog;
-grant usage on schema cron to postgres;
-grant all privileges on all tables in schema cron to postgres;
-select cron.schedule(
- 'alpenmanager-inaktive-spiele',
- '* * * * *',
- $cron$delete from am_private.rooms
-       where last_activity <= now() - interval '5 minutes'$cron$
-);
+-- pg_cron wird bewusst NICHT per SQL installiert: Auf manchen Supabase-Projekten
+-- schlägt dessen Installationsskript mit "2BP01: dependent privileges exist" fehl.
+-- Aktivierung im Dashboard unter Integrations > Cron.
+-- Fehlt die Erweiterung noch, bleibt das Datenbank-Update gültig. Nach der
+-- Aktivierung dieses Skript erneut ausführen, damit der Löschjob angelegt wird.
+do $setup_alpenmanager_cron$
+begin
+ if exists (select 1 from pg_extension where extname='pg_cron') then
+  perform cron.schedule(
+   'alpenmanager-inaktive-spiele',
+   '* * * * *',
+   $job$delete from am_private.rooms
+         where last_activity <= now() - interval '5 minutes'$job$
+  );
+  raise notice 'AlpenManager: automatischer Löschjob eingerichtet.';
+ else
+  raise notice 'AlpenManager: pg_cron ist noch nicht aktiviert. Unter Integrations > Cron aktivieren und dieses SQL-Skript erneut ausführen.';
+ end if;
+end;
+$setup_alpenmanager_cron$;
 
 -- Prüfung: select jobname, schedule, active from cron.job where jobname='alpenmanager-inaktive-spiele';
