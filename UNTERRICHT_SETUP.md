@@ -2,7 +2,7 @@
 
 ## Einmaliges Supabase-Setup
 1. Supabase-Projekt `xvgbisxwptnfupibcbpg` öffnen und links **SQL Editor → New query** wählen.
-2. **Neue Datenbank:** Den vollständigen Inhalt von `supabase_setup.sql` im SQL Editor ausführen. **Bestehende Datenbank:** `UPDATE_4_STELLIG_SUPABASE.sql` vollständig ausführen. Die bisherigen Tabellen und Spiele bleiben erhalten.
+2. **Neue Datenbank:** Den vollständigen Inhalt von `supabase_setup.sql` im SQL Editor ausführen. **Bereits installierte Vierstellercode-Version:** `UPDATE_5_MIN_INAKTIVITAET.sql` vollständig ausführen. Falls das ältere Update noch fehlt, zuerst `UPDATE_4_STELLIG_SUPABASE.sql` ausführen. Die bisherigen Tabellen bleiben erhalten; vorhandene Spiele erhalten zunächst fünf Minuten neue Frist.
 3. Der Publishable Key und die Supabase-Adresse sind bereits in `multiplayer.js` hinterlegt. Niemals geheime API-Schlüssel ins GitHub-Repository einfügen.
 4. Online-Version öffnen: https://proflarsschnyder.github.io/Anspruchsgruppen/
 
@@ -24,6 +24,9 @@
 
 ## Technische Hinweise
 - Die Browser aktualisieren den Spielzustand etwa alle zwei Sekunden. Bei langsamem Internet können kurze Verzögerungen auftreten.
+- **Automatische Löschung:** Nach fünf Minuten ohne Bedienung auf sämtlichen Geräten wird der gesamte Raum mit allen Teams, Entscheidungen und Ergebnissen gelöscht. Das gilt in allen Phasen, auch bei Eilmeldung, Strategiephase und Zwischenfazit. Deshalb aktiv bleiben, wenn die Spielrunde weitergeführt werden soll.
+- Tastatur, Maus, Touch-/Pointereingaben sowie Scrollen im Spiel verlängern die Frist, höchstens etwa alle 20 Sekunden mit einer authentifizierten Servermeldung. Reine Hintergrundabfragen und ein offen stehender Beamer verhindern die Löschung nicht.
+- **Supabase Cron:** Der Job `alpenmanager-inaktive-spiele` prüft minütlich auf abgelaufene Partien. Die eigentliche Löschung kann daher bis rund eine Minute nach den fünf Minuten erfolgen. Browser mit gelöschter Runde gelangen beim nächsten Statusabruf zurück zur Startseite.
 - Das kombinierte **Lehrpersonen-Dashboard** ist gleichzeitig Beameransicht und Spielsteuerung. Es bleibt auch bei der Eilmeldung bedienbar. Nach einem Neuladen kann die Lehrperson die Spielrunde fortsetzen und die Auswertung selbst freigeben.
 - Der Steuerungszugang wird im lokalen Speicher des Spielleitungsbrowsers gespeichert; ein normales Neuladen ist möglich. Wer «Verbindung verlassen» wählt, löscht diesen Zugang auf dem Gerät. Bitte nicht vor Spielende tun.
 - Die Anmeldung im Lehrpersonen-Dashboard wird serverseitig geprüft. Das Passwort für die Erstellung wird nur vorübergehend im Arbeitsspeicher gehalten; die laufende Partie wird über den geheimen Host-Token gesteuert.
@@ -39,3 +42,5 @@
 - Alle drei Skigebiete sind auf unterschiedlichen Geräten beigetreten.
 - Gleicher Countdown auf allen Geräten, automatische Sperre nach Zeitablauf, aber **keine automatische Auswertung**. Der Lehrerbutton ist erst nach drei gespeicherten Entscheidungen oder nach Ablauf der vier Minuten aktiv.
 - Saisonergebnisse und Schlussrangliste stimmen auf allen Geräten überein.
+- In Supabase unter Integrations → Cron prüfen, ob `alpenmanager-inaktive-spiele` aktiv ist.
+- Für einen kurzen Funktionstest kann in einem **separaten Testspiel** ein Raum fünf Minuten unbedient bleiben. Anschliessend höchstens eine weitere Minute für den Cron-Lauf einplanen. Nicht mit einer echten Unterrichtspartie testen.
