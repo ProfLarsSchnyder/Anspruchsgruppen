@@ -7,7 +7,7 @@
 4. Online-Version öffnen: https://proflarsschnyder.github.io/Anspruchsgruppen/
 
 ## Rollen und Start
-- **Lehrpersonen-Dashboard:** Auf der öffentlichen Startseite «Lehrpersonen-Dashboard» wählen und das Lehrpersonen-Passwort **4208** eingeben. Erst nach dieser Anmeldung erscheint **Neue Spielrunde**.
+- **Lehrpersonen-Dashboard:** Auf der öffentlichen Startseite «Lehrpersonen-Dashboard» wählen und das Lehrpersonen-Passwort **1234** eingeben. Erst nach dieser Anmeldung erscheint **Neue Spielrunde**.
 - **Spiel erstellen:** Nur über das Lehrpersonen-Dashboard. Die Supabase-Datenbank verlangt auch beim direkten API-Aufruf das richtige Passwort. Nach der Erstellung erhält die Lehrperson den geheimen Steuerungszugang und einen sechsstelligen Spielcode.
 - **Spiel beitreten:** Drei echte Teams wählen auf der öffentlichen Startseite ein Skigebiet und geben den Spielcode ein. Dafür ist kein Passwort nötig.
 - **Beamer-Ansicht:** Innerhalb der Spielleitung «Beamer-Dashboard öffnen» wählen und im neuen Tab mit dem Lehrpersonen-Passwort anmelden. Dort den Spielcode eingeben; alternativ im Lehrpersonen-Dashboard «Bestehende Spielrunde anzeigen» wählen. Die Beamer-Ansicht bleibt **schreibgeschützt**.
