@@ -218,7 +218,7 @@
       '<section class="panel"><h3>Entscheidungen einreichen</h3><p>Sie können Ihre Eingaben innerhalb der Strategiephase mehrfach aktualisieren. Nach Ablauf der vier Minuten sind sie gesperrt.</p><button class="btn" id="netSave">Entscheidungen speichern</button><p id="netSaveStatus" class="net-muted">'+(t?.ready?"Ihre letzten Entscheidungen wurden gespeichert.":"Noch keine Entscheidung gespeichert.")+'</p></section></div>'+
       '<div class="stack"><section class="panel"><h3>Unternehmenskennzahlen</h3>'+metricHtml(s)+'</section>'+
       '<section class="panel"><h3>Die sieben Anspruchsgruppen</h3>'+groupsHtml(s)+'</section>'+
-      '<section class="panel"><h3>Kapazität und Nachfrage</h3><p id="netCapacity" class="net-note"></p><p class="hint">Ihr Marktanteil hängt auch von den Entscheidungen der beiden Konkurrenzunternehmen ab.</p></section></div></div>';
+      '<section class="panel"><h3>Kapazität und Nachfrage</h3><div id="netCapacity"></div></section></div></div>';
   }
   function paintDecision(){
     const t=own(),s=stateFor(t),decision=t?.choice||{};
@@ -228,7 +228,7 @@
     }
     app().innerHTML=commonHeader()+'<div class="net-top"><h2>Strategiephase · Saison '+room.season+'/5</h2><div class="net-timer" id="netTime">'+formatTimer()+'</div></div>'+planDetails()+msgBox();
     bindLeave();get("supplier").value=decision.supplier||"zuverlässig";
-    const updateCap=()=>{const d=readDecision(),copy=clone(s);if(d.investment==="lift"&&!copy.assets.lift)copy.assets.lift=1;get("netCapacity").textContent="Geplante Kapazität: "+num(capacityOf(copy,d))+" Gäste pro Saison."};
+    const updateCap=()=>{const d=readDecision();get("netCapacity").innerHTML=capacityOverview(s,d);};
     for(const id of ["price","staff","wage","marketing","maintenance"]){const el=get(id);const draw=()=>{const v=(id==="marketing"||id==="maintenance")?num(el.value):el.value;get(id+"Val").textContent=el.dataset.prefix+v+el.dataset.suffix};el.oninput=()=>{draw();updateCap()};draw()}
     document.querySelectorAll('input[name="investment"]').forEach(el=>el.onchange=updateCap);
     updateCap();
