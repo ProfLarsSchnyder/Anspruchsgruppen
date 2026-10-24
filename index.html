@@ -498,11 +498,7 @@ function finalDashboardHtml(entries,options){
    (b.total??-1)-(a.total??-1)||
    (a.profit!=null&&b.profit!=null?b.profit-a.profit:0)||
    a.slot-b.slot);
- const ranked=stats.map((s,i)=>{
-   const prev=stats[i-1],same=prev&&prev.total===s.total&&prev.solvent===s.solvent;
-   const preciseTie=same&&(prev.profit==null||s.profit==null||prev.profit===s.profit);
-   return {...s,rank:i+1};
- });
+ const ranked=stats.map((s,i)=>({...s,rank:i+1}));
  // An equal score is split by cumulative profit only when both are available.
  function rankNumber(i){let j=i;while(j>0&&stats[j].total===stats[j-1].total&&stats[j].solvent===stats[j-1].solvent&&
     (stats[j].profit==null||stats[j-1].profit==null||stats[j].profit===stats[j-1].profit))j--;return j+1;}
@@ -512,16 +508,15 @@ function finalDashboardHtml(entries,options){
  const complete=ranked.filter(x=>x.state);
  const eligibleFull=complete.filter(x=>x.solvent===true);
  const bestOf=(field,filter)=>{const list=eligibleFull.filter(x=>filter?filter(x):x[field]!=null);return list.length?list.slice().sort((a,b)=>b[field]-a[field])[0]:null};
- const profitBest=bestOf("profit"),guestBest=bestOf("guests"),stakeBest=bestOf("stakeValue",()=>false);
+ const profitBest=bestOf("profit"),guestBest=bestOf("guests");
  const goodwill=eligibleFull.length?eligibleFull.slice().sort((a,b)=>b.rating.stakeholder-a.rating.stakeholder)[0]:null;
  const futureBest=eligibleFull.length?eligibleFull.slice().sort((a,b)=>b.rating.future-a.rating.future)[0]:null;
- const years=5;
  const note=options.publicView?"Öffentliche Spielwerte – vertrauliche Teamentscheidungen bleiben geschützt.":"Vergleich der drei Skigebiete nach fünf Wintersaisons.";
  const medals=["🥇","🥈","🥉"],podiumOrder=[1,0,2];
  const podium='<div class="final-podium">'+podiumOrder.map(i=>{
    const t=ranked[i];if(!t)return "";
    const label=t.solvent===false?"Nicht gewinnberechtigt":t.solvent===true?"Gewinnberechtigt":"Spielstand";
-   return '<div class="final-podium-card '+(i===0?"final-podium-card--first":"")+'"><div class="final-medal">'+medals[i]+'</div>'+
+   return '<div class="final-podium-card '+(i===0&&champ===t?"final-podium-card--first":"")+'"><div class="final-medal">'+(t.solvent===false?'—':medals[Math.max(0,Math.min(2,t.rank-1))])+'</div>'+
     '<div class="final-podium-rank">'+t.rank+'. Platz</div><h3>'+safeName(t.name)+'</h3>'+
     '<div class="final-podium-number">'+(t.total??"–")+'<span>/100</span></div>'+
     '<div class="final-podium-bottom">'+label+'</div></div>';
@@ -529,7 +524,7 @@ function finalDashboardHtml(entries,options){
  const award=(title,t,amount,sub)=>'<div class="final-award"><span class="final-award-label">'+title+'</span><strong>'+safeName(t?t.name:"Nicht verfügbar")+'</strong>'+
   '<span class="final-award-value">'+(t?amount:"–")+'</span><small>'+sub+'</small></div>';
  const awardPart='<div class="final-awards">'+
-  award("Höchster Saisongewinn gesamt",profitBest,profitBest?fMoney(profitBest.profit):"","Kumulierter Gewinn über fünf Saisons")+
+  award("Höchster Gesamtgewinn",profitBest,profitBest?fMoney(profitBest.profit):"","Kumulierter Gewinn über fünf Saisons")+
   award("Meiste Gäste insgesamt",guestBest,guestBest?fNum(guestBest.guests):"","Besuche über alle Saisons")+
   award("Stärkste Anspruchsgruppen",goodwill,goodwill?Math.round(goodwill.rating.stakeholder)+"/100":"","Bewertung der sieben Anspruchsgruppen")+
   award("Beste Zukunftsfähigkeit",futureBest,futureBest?Math.round(futureBest.rating.future)+"/100":"","Langfristige Bewertung")+
@@ -579,7 +574,7 @@ function finalDashboardHtml(entries,options){
      seasons+groups+'</section>';
  }).join("");
  return '<div class="final-dashboard"><section class="final-hero"><div class="final-hero-overline">ALPENMANAGER · SAISONFINALE</div>'+
-   '<h2>🏁 Fünf Saisons. Ein Sieger.</h2><p>'+note+'</p>'+
+   '<h2>'+(champ?'🏁 Fünf Saisons. Ein Sieger.':'🏁 Fünf Saisons. Kein gewinnberechtigtes Team.')+'</h2><p>'+note+'</p>'+
    '<div class="final-weights"><span>40 % Wirtschaft</span><span>40 % Anspruchsgruppen</span><span>20 % Zukunft</span></div></section>'+
    '<h3 class="final-section-title">Das Siegerpodest</h3>'+podium+
    '<h3 class="final-section-title">Die drei Skigebiete im Detail</h3><div class="final-team-list">'+details+'</div>'+
