@@ -16,9 +16,11 @@ https://proflarsschnyder.github.io/Anspruchsgruppen/
 ## Supabase einrichten oder aktualisieren
 
 - **Neuinstallation:** Datei [supabase_setup.sql](supabase_setup.sql) vollständig im Supabase SQL Editor ausführen.
-- **Bereits eingerichtete Datenbank:** Datei [UPDATE_4_STELLIG_SUPABASE.sql](UPDATE_4_STELLIG_SUPABASE.sql) im Supabase SQL Editor ausführen, damit Spielcodes, automatische Teamzuteilung und Auswertungssperre mit dem aktuellen Browsercode übereinstimmen.
+- **Bereits mit Vierstellercodes eingerichtete Datenbank:** Datei [UPDATE_5_MIN_INAKTIVITAET.sql](UPDATE_5_MIN_INAKTIVITAET.sql) einmal vollständig im Supabase SQL Editor ausführen. Falls das Vierstellercode-Update noch fehlt, zuerst [UPDATE_4_STELLIG_SUPABASE.sql](UPDATE_4_STELLIG_SUPABASE.sql) ausführen.
 - Der Supabase-Publishable-Key darf öffentlich sein. Geheime Datenbank- oder Service-Role-Keys gehören niemals ins Repository.
 - Alte Spielrunden behalten ihre sechsstelligen Codes. Für einen neuen Unterrichtsdurchlauf nach dem SQL-Update eine **neue Spielrunde** erstellen.
+
+**Automatische Bereinigung:** Nach fünf Minuten ohne echte Bedienung der Lehrperson oder eines Teams löscht Supabase die Spielrunde und alle drei Teamdatensätze. Eingaben und Steuerungsaktionen verlängern die Frist, automatische Statusabfragen nicht. Supabase Cron prüft einmal pro Minute, daher kann die endgültige Löschung bis zu etwa einer Minute später erfolgen. Die lokale Demo ist nicht betroffen.
 
 Weitere Unterrichtshinweise und Prüfliste: [UNTERRICHT_SETUP.md](UNTERRICHT_SETUP.md).
 
