@@ -30,8 +30,8 @@ create table if not exists am_private.teams (
  unique(room_id,slot)
 );
 
--- Fünf Minuten ohne Bedienung: Raum samt Teams automatisch löschen.
--- Bestehende Spielrunden erhalten beim Update eine neue 5-Minuten-Frist.
+-- Zehn Minuten ohne Bedienung: Raum samt Teams automatisch löschen.
+-- Bestehende Spielrunden erhalten beim Update eine neue 10-Minuten-Frist.
 alter table am_private.rooms
  add column if not exists last_activity timestamptz not null default now();
 create index if not exists am_rooms_last_activity_idx on am_private.rooms(last_activity);
@@ -96,7 +96,7 @@ begin
  then raise exception 'Bitte einen vierstelligen Spielcode eingeben'; end if;
  select * into v_room from am_private.rooms where code=trim(p_code) for update;
  if not found then raise exception 'Spielcode nicht gefunden'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  if v_room.phase<>'lobby' then raise exception 'Beitritt nur vor Spielbeginn möglich'; end if;
  select available.slot into v_slot
@@ -122,7 +122,7 @@ begin
  select * into v_room from am_private.rooms where code=upper(trim(p_code));
  if not found or p_token is null or length(p_token)<40
  then raise exception 'Spielcode oder Zugang ungültig'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  v_host:=(md5(p_token)=v_room.host_hash);
  if not v_host then
@@ -155,7 +155,7 @@ declare v_room am_private.rooms%rowtype; v_team am_private.teams%rowtype;
 begin
  select * into v_room from am_private.rooms where code=upper(trim(p_code)) for update;
  if not found then raise exception 'Spiel nicht gefunden'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  if v_room.phase<>'decision' or v_room.deadline is null or now()>=v_room.deadline
  then raise exception 'Die Entscheidungsphase ist beendet'; end if;
@@ -197,7 +197,7 @@ begin
  select * into v_room from am_private.rooms where code=upper(trim(p_code)) for update;
  if not found or md5(coalesce(p_token,''))<>v_room.host_hash
  then raise exception 'Nur die Spielleitung darf das Spiel steuern'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  if p_action='start' and v_room.phase='lobby' then
   if (select count(*) from am_private.teams where room_id=v_room.id)<>3
@@ -206,7 +206,7 @@ begin
     last_activity=now(),version=version+1 where id=v_room.id;
  elsif p_action='open' and v_room.phase='intro' then
   update am_private.teams set ready=false,choice='{}'::jsonb where room_id=v_room.id;
-  update am_private.rooms set phase='decision',deadline=now()+interval '4 minutes',
+  update am_private.rooms set phase='decision',deadline=now()+case when v_room.season=1 then interval '6 minutes' else interval '3 minutes' end,
     last_activity=now(),version=version+1 where id=v_room.id;
  elsif p_action='next' and v_room.phase='report' then
   if v_room.season=5 then
@@ -232,7 +232,7 @@ begin
  select * into v_room from am_private.rooms where code=upper(trim(p_code)) for update;
  if not found or md5(coalesce(p_token,''))<>v_room.host_hash
  then raise exception 'Nur die Spielleitung darf Resultate veröffentlichen'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  if v_room.phase<>'decision' then raise exception 'Die Saison wurde bereits beendet oder noch nicht gestartet'; end if;
  if now()<v_room.deadline and
@@ -240,7 +240,7 @@ begin
  then raise exception 'Es wurden noch keine Entscheidungen gespeichert'; end if;
  if now()<v_room.deadline and
    (select count(*) from am_private.teams where room_id=v_room.id and ready)<>3
- then raise exception 'Vor Ablauf der vier Minuten müssen alle drei Teams gespeichert haben'; end if;
+ then raise exception 'Vor Ablauf der Entscheidungszeit müssen alle drei Teams gespeichert haben'; end if;
  if jsonb_typeof(p_states)<>'array' or jsonb_array_length(p_states)<>3
  then raise exception 'Es werden drei Teamresultate benötigt'; end if;
  if (select count(*) from am_private.teams where room_id=v_room.id)<>3
@@ -278,7 +278,7 @@ begin
  then raise exception 'Dashboard-Passwort ungültig'; end if;
  select * into v_room from am_private.rooms where code=upper(trim(p_code));
  if not found then raise exception 'Spielcode nicht gefunden'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  return jsonb_build_object(
    'code',v_room.code,'title',v_room.title,'role','projector',
@@ -304,7 +304,7 @@ end; $$;
 -- Das automatische Polling nutzt diese Funktion ausdrücklich NICHT.
 create or replace function public.am_touch_room(p_code text,p_token text)
 returns jsonb language plpgsql security definer set search_path = ''
-as $
+as $$
 declare v_room am_private.rooms%rowtype;
 begin
  select * into v_room from am_private.rooms where code=upper(trim(p_code)) for update;
@@ -314,11 +314,11 @@ begin
    select 1 from am_private.teams
    where room_id=v_room.id and access_hash=md5(p_token)
  ) then raise exception 'Spielcode oder Zugang ungültig'; end if;
- if v_room.last_activity <= now() - interval '5 minutes'
+ if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  update am_private.rooms set last_activity=now() where id=v_room.id;
  return jsonb_build_object('ok',true);
-end; $;
+end; $$;
 
 -- API-Rechte: niemals private Tabellen freigeben!
 revoke all on function public.am_touch_room(text,text) from public,anon,authenticated;
@@ -341,7 +341,7 @@ revoke all on function public.am_projector_room(text,text) from public,anon,auth
 grant execute on function public.am_projector_room(text,text) to anon,authenticated;
 
 -- Supabase Cron löscht auch dann, wenn alle Browser geschlossen sind.
--- Löschung erfolgt bei der nächsten minütlichen Prüfung nach 5 Minuten.
+-- Löschung erfolgt bei der nächsten minütlichen Prüfung nach 10 Minuten.
 -- Teams werden durch ON DELETE CASCADE mitgelöscht.
 -- pg_cron wird bewusst NICHT per SQL installiert: Auf manchen Supabase-Projekten
 -- schlägt dessen Installationsskript mit "2BP01: dependent privileges exist" fehl.
@@ -355,7 +355,7 @@ begin
    'alpenmanager-inaktive-spiele',
    '* * * * *',
    $job$delete from am_private.rooms
-         where last_activity <= now() - interval '5 minutes'$job$
+         where last_activity <= now() - interval '10 minutes'$job$
   );
   raise notice 'AlpenManager: automatischer Löschjob eingerichtet.';
  else
