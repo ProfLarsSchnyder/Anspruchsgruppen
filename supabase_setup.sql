@@ -43,7 +43,7 @@ create or replace function public.am_verify_teacher(p_pin text)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
 begin
- if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
+ if md5(coalesce(p_pin,'')) <> '81dc9bdb52d04dc20036dbd8313ed055'
  then raise exception 'Lehrpersonen-Passwort ungültig'; end if;
  return jsonb_build_object('ok',true);
 end; $$;
@@ -57,7 +57,7 @@ returns jsonb language plpgsql security definer set search_path = ''
 as $$
 declare v_code text; v_token text; v_id uuid; v_try integer;
 begin
- if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
+ if md5(coalesce(p_pin,'')) <> '81dc9bdb52d04dc20036dbd8313ed055'
  then raise exception 'Lehrpersonen-Passwort ungültig'; end if;
  if length(trim(coalesce(p_title,''))) > 60 then raise exception 'Titel ist zu lang'; end if;
  v_token := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
@@ -240,7 +240,7 @@ returns jsonb language plpgsql security definer set search_path = ''
 as $$
 declare v_room am_private.rooms%rowtype;
 begin
- if md5(coalesce(p_pin,'')) <> '4a71e49f6bda0c9b7642f39f1aa1f567'
+ if md5(coalesce(p_pin,'')) <> '81dc9bdb52d04dc20036dbd8313ed055'
  then raise exception 'Dashboard-Passwort ungültig'; end if;
  select * into v_room from am_private.rooms where code=upper(trim(p_code));
  if not found then raise exception 'Spielcode nicht gefunden'; end if;
@@ -283,6 +283,6 @@ revoke all on function public.am_projector_room(text,text) from public,anon,auth
 grant execute on function public.am_projector_room(text,text) to anon,authenticated;
 
 -- Optionaler Funktionstest im SQL Editor:
--- select public.am_verify_teacher('4208');
--- select public.am_create_room('Test AlpenManager', '4208');
+-- select public.am_verify_teacher('1234');
+-- select public.am_create_room('Test AlpenManager', '1234');
 -- Achtung: Dies erzeugt einen neuen Test-Spielcode samt geheimem Lehrpersonen-Token.
