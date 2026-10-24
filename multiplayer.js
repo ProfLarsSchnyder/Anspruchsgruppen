@@ -60,6 +60,7 @@
     const el=document.createElement("style");el.id="netStyles";
     el.textContent=".net-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:17px}.net-tag{background:#e8f2f8;color:#174e6e;border:1px solid #c7dce9;border-radius:9px;padding:7px 12px;font-size:13px;font-weight:650}.net-code{font-size:35px;letter-spacing:5px;font-weight:800;color:#0c4870}.net-item{padding:13px;border:1px solid #dce8ef;border-radius:10px;margin-bottom:9px;background:#fbfdff}.net-item strong{display:block}.net-muted{color:#607589;font-size:13px}.net-action{margin-top:13px}.net-flex{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.net-input{width:100%;border:1px solid #cadbe6;border-radius:9px;padding:12px;margin:7px 0 13px;background:#fff;color:#172e42}.net-flag{display:inline-block;padding:4px 9px;border-radius:8px;font-size:12px;background:#e7f4ef;color:#236748}.net-flag.wait{background:#fff3e0;color:#815000}.net-error{min-height:18px;margin-top:13px;font-size:14px}.net-ranking{display:grid;gap:10px}.net-rank{border:1px solid #dce8ef;background:#fbfdff;border-radius:12px;padding:16px}.net-rank.winner{border-color:#78aaa0;background:#f1faf7}.net-columns{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}.net-timer{font-size:35px;font-weight:800;color:#12668b;letter-spacing:1px}.net-short{font-size:13px;color:#657f91}.net-locked{opacity:.6}.net-note{background:#eff6fa;border-radius:10px;padding:12px 14px;color:#33576a}.net-bad{color:#ad2834}.net-team-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}@media(max-width:560px){.net-code{font-size:26px}.net-timer{font-size:27px}}";
     el.textContent += ".net-role-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-items:stretch}.net-role-grid .panel{height:100%}.projector{max-width:1480px;margin:auto}.projector .net-code{font-size:46px}.projector h2{font-size:clamp(25px,3vw,43px)}.projector h3{font-size:23px}.projector .net-stat{border:1px solid #d5e5ee;background:#fff;border-radius:16px;padding:19px;min-width:0}.projector .net-big{font-size:clamp(24px,3vw,43px);font-weight:850;line-height:1.1;color:#0d415c}.projector .net-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.projector .net-team{display:grid;grid-template-columns:minmax(135px,1fr) auto;gap:12px;align-items:center;border:1px solid #d5e5ee;border-radius:13px;padding:16px;background:#fff}.projector .net-score-row{display:grid;grid-template-columns:65px minmax(120px,1fr) 85px 120px;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #dce9f1}.projector .net-bartrack{height:14px;background:#e8f0f4;border-radius:8px;overflow:hidden}.projector .net-barfill{height:100%;border-radius:8px;background:#237b98}.projector .net-hero{background:linear-gradient(115deg,#11354f,#196281);border-radius:20px;color:white;padding:28px 32px;margin-bottom:20px}.projector .net-hero h2,.projector .net-hero .net-big{color:#fff}.projector .net-event{padding:20px 0}.projector .net-event img{max-height:360px;object-fit:cover}.projector .net-project-timer{font-size:clamp(64px,12vw,150px);font-weight:900;letter-spacing:5px;line-height:1.2;color:#0d526d;text-align:center}.projector .net-sub{font-size:16px;color:#5a7588}.projector .net-history{width:100%;height:auto;max-height:270px}.projector .net-legend{display:flex;gap:16px;flex-wrap:wrap}.projector .net-dot{width:12px;height:12px;display:inline-block;border-radius:100%;margin-right:5px}@media(max-width:670px){.projector .net-score-row{grid-template-columns:45px 1fr 60px}.projector .net-score-row .net-extracol{display:none}.projector .net-code{font-size:30px}}";
+    el.textContent += ".projector .net-host-controls{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px;border:1px solid #b4d6e6;background:linear-gradient(110deg,#f0f8fc,#fff)}.projector .net-host-controls h3{margin:4px 0;font-size:19px}.projector .net-host-controls p{margin:3px 0}.projector .net-host-eyebrow{font-size:11px;color:#18739a;font-weight:850;letter-spacing:.07em}.projector .net-host-actions .btn{padding:13px 17px;min-width:190px}.projector .net-host-actions .btn:disabled{opacity:.46;cursor:not-allowed}@media(max-width:670px){.projector .net-host-controls{display:block}.projector .net-host-actions .btn{width:100%;margin-top:12px}}";
     document.head.appendChild(el);
   }
   function pageTop(title) {
@@ -71,29 +72,21 @@
   function leaveButton(){return '<button class="btn alt" id="netLeave">Verbindung verlassen</button>';}
   function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{const warning=isHost()?"Spielleitungszugang auf diesem Gerät verlassen? Der Zugangstoken wird gelöscht. Ohne ihn können Sie diese Runde nicht weiter steuern.":"Diese Ansicht verlassen? Die Spielrunde bleibt gespeichert.";if(confirm(warning)){clearSession();homepage();}};}
 
-  // Öffentlich: Team beitreten oder geschützten Lehrpersonenbereich öffnen.
-  // Innerhalb des Lehrpersonenbereichs: Spiel erstellen oder Beamer-Ansicht öffnen.
+  // Neue Spielrunden öffnen direkt das kombinierte Beamer- und Steuerungsdashboard.
   function teacherLanding(){
     if(!teacherPin){homepage();return;}
     room=null;lastView="teacher";lastVersion=-1;message="";
     const h=get("headState");if(h)h.textContent="Lehrpersonenbereich";
-    let prefill="";try{prefill=new URLSearchParams(location.search).get("code")||"";}catch{}
-    const code=/^[A-F0-9]{6}$/.test(prefill)?prefill:"";
     app().innerHTML='<div class="am-entry am-entry--teacher">'+
       '<section class="am-welcome am-welcome--teacher"><div class="am-welcome-inner"><div class="am-eyebrow">SPIELLEITUNG · GESCHÜTZTER BEREICH</div>'+
-      '<h2>Ihre Spielrunde. Ihre Regie.</h2><p>Eröffnen Sie eine Partie mit drei Teams oder zeigen Sie den aktuellen Spielstand auf dem Beamer.</p></div></section>'+
-      '<div class="am-card-grid">'+
-      '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">NEUES SPIEL</p><h3>Spielrunde erstellen</h3></div></div>'+
-      '<p class="am-card-intro">Erstellen Sie einen Spielcode für drei Skigebiete. Sie steuern anschliessend den Ablauf über fünf Saisons.</p>'+
+      '<h2>Ihre Spielrunde. Ihre Regie.</h2><p>Eröffnen Sie eine Partie. Danach sehen Sie Spielcode, Teamstatus, Countdown, Rangliste und die komplette Spielsteuerung direkt in einem Dashboard.</p></div></section>'+
+      '<div class="am-card-grid am-card-grid--single">'+
+      '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">NEUES SPIEL</p><h3>Spielrunde und Dashboard eröffnen</h3></div></div>'+
+      '<p class="am-card-intro">Erstellen Sie einen Spielcode für drei Skigebiete. Das gemeinsame Dashboard kann anschliessend auch im Vollbild am Beamer gezeigt werden.</p>'+
       '<div class="am-form-group"><label for="netRoomTitle">Name der Spielrunde</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager" autocomplete="off"></div>'+
-      '<button class="btn am-submit" id="netCreate">Spiel erstellen <span aria-hidden="true">→</span></button>'+
-      '<p class="am-footnote">Der Steuerungszugang bleibt auf diesem Gerät gespeichert.</p></section>'+
-      '<section class="am-card am-card--secondary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">02</span><div><p class="am-card-overline">LAUFENDES SPIEL</p><h3>Beamer-Dashboard</h3></div></div>'+
-      '<p class="am-card-intro">Zeigen Sie den gemeinsamen Countdown, die Teamfortschritte und die wichtigsten Saisonergebnisse.</p>'+
-      '<div class="am-form-group"><label for="netProjectCode">Spielcode</label><input class="net-input am-input-code" id="netProjectCode" maxlength="6" value="'+html(code)+'" placeholder="z. B. A1B2C3" autocomplete="off" autocapitalize="characters"></div>'+
-      '<button class="btn alt am-submit" id="netProject">Beamer-Ansicht öffnen <span aria-hidden="true">↗</span></button>'+
-      '<p class="am-footnote">Schreibgeschützt – die Spielleitung bleibt davon getrennt.</p></section></div>'+
-      '<div class="am-tools"><div><strong>Für die Vorbereitung</strong><p>Das Spiel weiterhin unabhängig von der Online-Partie auf einem Gerät erkunden.</p></div><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
+      '<button class="btn am-submit" id="netCreate">Spiel erstellen und Dashboard öffnen <span aria-hidden="true">→</span></button>'+
+      '<p class="am-footnote">Der Steuerungszugang bleibt auf diesem Gerät gespeichert und wird nach dem Erstellen direkt geöffnet.</p></section></div>'+
+      '<div class="am-tools"><div><strong>Für die Vorbereitung</strong><p>Testen Sie die kombinierte Lehreranzeige oder das Spiel unabhängig von Supabase.</p></div><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
       '<div class="am-back"><button class="btn alt" id="netTeacherBack">← Zur Startseite / abmelden</button></div>'+msgBox()+'</div>';
     get("netCreate").onclick=async()=>{
       const button=get("netCreate");if(button)button.disabled=true;
@@ -105,16 +98,6 @@
         await refresh(true);
       }catch(e){status(e.message,true)}
       finally{if(get("netCreate"))get("netCreate").disabled=false}
-    };
-    get("netProject").onclick=async()=>{
-      const code=get("netProjectCode").value.trim().toUpperCase();
-      if(!/^[A-F0-9]{6}$/.test(code)){status("Bitte einen gültigen Spielcode eingeben.",true);return;}
-      try{
-        status("Beamer-Ansicht wird geöffnet …");
-        const preview=await rpc("am_projector_room",{p_code:code,p_pin:teacherPin});
-        saveSession({code,pin:teacherPin,role:"projector"});
-        teacherPin="";room=preview;message="";showPage();
-      }catch(e){status(e.message,true)}
     };
     get("netTeacherBack").onclick=()=>{teacherPin="";homepage()};
     get("netOffline").onclick=()=>{startView()};
@@ -200,7 +183,11 @@
   function secondsLeft(){return room&&room.deadline?Math.max(0,Math.ceil((Date.parse(room.deadline)-Date.now())/1000)):240;}
   function formatTimer(){const s=secondsLeft();return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
   function refreshTimer(){const el=get("netTime");if(el&&room?.phase==="decision"){el.textContent=formatTimer();el.style.color=secondsLeft()===0?"#b03238":"#12668b";}}
-  function updateReady(){const el=get("netReady");if(el)el.innerHTML=namesAndReady();const count=get("netCount");if(count)count.textContent=room.teams.filter(t=>t.ready).length+" / 3 Teams";const btn=get("netFinish");if(btn)btn.disabled=room.teams.filter(t=>t.ready).length!==3 && secondsLeft()>0;}
+  function updateReady(){
+    const el=get("netReady");if(el)el.innerHTML=isHost()?projectorTeams():namesAndReady();
+    const count=get("netCount");if(count)count.textContent=room.teams.filter(t=>t.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";
+    const btn=get("netFinish");if(btn)btn.disabled=room.teams.filter(t=>t.ready).length!==3&&secondsLeft()>0;
+  }
   function planDetails(){
     const t=own(),s=stateFor(t),d=(t?.choice&&Object.keys(t.choice).length?t.choice:defaults(s));
     const invested=i=>Boolean(s.assets[i.id]);
@@ -279,9 +266,10 @@
   // Beamer-Dashboard: eigene rein lesende Ansicht. Teamentscheidungen werden nie angefordert.
   const colours=["#16769a","#d88736","#468e69"];
   function projectorState(t){
-    if(!t||!t.stats||!Array.isArray(t.stats.stake))return null;
-    const s=Object.assign(clone(START),t.stats);
-    s.assets=Object.assign(clone(START.assets),t.stats.assets||{});
+    const source=isHost()&&t?.state&&Array.isArray(t.state.stake)?t.state:t?.stats;
+    if(!source||!Array.isArray(source.stake))return null;
+    const s=Object.assign(clone(START),source);
+    s.assets=Object.assign(clone(START.assets),source.assets||{});
     return s;
   }
   function projectorSnapshot(){
@@ -345,11 +333,40 @@
     svg+='</svg>';
     return svg+'<div class="net-legend">'+series.map(s=>'<span><i class="net-dot" style="background:'+colours[s.slot-1]+'"></i>'+html(s.name)+'</span>').join("")+'</div><p class="net-muted">Kumulierter Saisongewinn in Millionen CHF. Investitionen sind in dieser Gewinnzahl nicht als vollständiger Saisonaufwand verbucht.</p>';
   }
+  // Steuerbuttons sitzen im selben Dashboard wie Countdown und Teamstatistik.
+  function hostDashboardControls(){
+    const phase=room.phase,count=(room.teams||[]).length,ready=(room.teams||[]).filter(t=>t.ready).length;
+    let action="",hint="";
+    if(phase==="lobby"){
+      action='<button class="btn" id="netStart" '+(count!==3?'disabled':'')+'>Spiel starten →</button>';
+      hint=count===3?"Alle drei Skigebiete sind angemeldet.":"Warten auf drei echte Teams: "+count+" von 3 angemeldet.";
+    }else if(phase==="intro"){
+      action='<button class="btn" id="netOpen">Strategiephase starten · 4 Minuten →</button>';
+      hint="Alle Teams sehen dasselbe Saisonereignis.";
+    }else if(phase==="decision"){
+      action='<button class="btn" id="netFinish" '+(ready!==3&&secondsLeft()>0?'disabled':'')+'>Saison auswerten →</button>';
+      hint="Vor Ablauf des Timers nur möglich, wenn alle drei Teams eingereicht haben.";
+    }else if(phase==="report"){
+      action='<button class="btn" id="netNext">'+(room.season===5?"Schlussrangliste anzeigen":"Nächste Saison vorbereiten")+' →</button>';
+      hint="Besprechen Sie die Ergebnisse und starten Sie anschliessend die nächste Saison.";
+    }else{
+      hint="Die Partie ist abgeschlossen. Für eine neue Partie zur Startseite zurückkehren.";
+    }
+    return '<section class="panel net-host-controls"><div><div class="net-host-eyebrow">SPIELLEITUNG · AKTIVE SPIELRUNDE</div><h3>Spielsteuerung</h3><p class="net-muted">'+hint+'</p></div><div class="net-host-actions">'+action+'</div></section>';
+  }
+  function bindHostDashboardControls(){
+    const start=get("netStart");if(start)start.onclick=()=>control("start");
+    const open=get("netOpen");if(open)open.onclick=()=>control("open");
+    const finish=get("netFinish");if(finish)finish.onclick=finishSeason;
+    const next=get("netNext");if(next)next.onclick=()=>control("next");
+  }
   function projectorPage(){
+    const host=isHost();
     const phase=room.phase,desc=phaseNames[phase]||"Online",title=phase==="finished"?"Schlussrangliste":phase==="report"?"Ergebnisse der Saison "+room.season:phase==="decision"?"Strategiephase":phase==="intro"?"Saisonereignis":'Spielrunde vorbereiten';
-    const head=get("headState");if(head)head.textContent="Beamer · Saison "+room.season+"/5";
+    const head=get("headState");if(head)head.textContent=(host?"Spielleitung + Beamer":"Beamer")+" · Saison "+room.season+"/5";
     let body=projectorShell(title,desc);
-    body+='<div class="net-flex" style="margin-bottom:14px"><span class="net-tag">Live · nur Anzeige · keine Spielsteuerung</span><div class="net-flex"><button class="btn alt" id="netFull">Vollbild</button>'+leaveButton()+'</div></div>';
+    body+='<div class="net-flex" style="margin-bottom:14px"><span class="net-tag">'+(previewActive?"Lokale Vorschau":host?"Live · Lehrersteuerung und Beamer in einem":"Live · nur Anzeige · keine Spielsteuerung")+'</span><div class="net-flex"><button class="btn alt" id="netFull">Vollbild</button>'+leaveButton()+'</div></div>';
+    if(host)body+=hostDashboardControls();
     if(phase==="lobby"){
       body+='<div class="panel"><h3>Teams beitreten lassen</h3><p>Spielcode auf der Startseite eingeben und eines der drei Skigebiete wählen. Die Spielleitung startet nach dem Beitritt aller Gruppen.</p>'+projectorTeams()+'</div>';
     }else if(phase==="intro"){
@@ -375,13 +392,14 @@
     }
     app().innerHTML=body+msgBox()+'</div>';
     bindLeave();
+    if(host)bindHostDashboardControls();
     const full=get("netFull");if(full)full.onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}catch(e){status("Vollbildmodus nicht verfügbar.",true)}};
   }
 
   function showPage() {
     if(!room||!session){homepage();return}
     installStyle();
-    if(isProjector())projectorPage();
+    if(isProjector()||isHost())projectorPage();
     else if(room.phase==="lobby")lobby();
     else if(room.phase==="intro")intro();
     else if(room.phase==="decision"){if(isHost())hostDecisions();else paintDecision();}
