@@ -263,10 +263,17 @@
     if(get("netNext"))get("netNext").onclick=()=>control("next");
   }
   function finished(){
-    app().innerHTML=commonHeader()+'<section class="panel"><h2>Schlussrangliste · 5 Saisons</h2><p>40 % Wirtschaft · 40 % Anspruchsgruppen · 20 % Zukunftsfähigkeit. Zahlungsunfähige Unternehmen behalten ihre Punkte, können aber nicht gewinnen.</p>'+
-      scoreboard()+'<h3 style="margin-top:22px">Reflexionsfragen</h3><p>Welche Anspruchsgruppen haben Sie berücksichtigt? Welche Interessenkonflikte gab es? Was würden Sie in einer neuen Partie anders machen?</p>'+
-      '<button class="btn" id="netNew" style="margin-top:12px">Zur Startseite</button></section>'+msgBox();
-    bindLeave();get("netNew").onclick=()=>{clearSession();homepage()};
+    // Die Lehrperson darf sämtliche Resultate sehen; für Lernende bleiben
+    // die noch nicht freigegebenen Unternehmensdetails der Rivalen verborgen.
+    const entries=(room.teams||[]).map(t=>{
+      const ownState=t.state&&Array.isArray(t.state.stake)?t.state:null;
+      const summary=(room.results||[]).find(x=>Number(x.slot)===Number(t.slot))||{};
+      return {name:t.name,slot:t.slot,state:ownState,summary};
+    });
+    app().innerHTML=commonHeader()+finalDashboardHtml(entries)+
+      '<div class="final-actions"><button class="btn" id="netNew">Zur Startseite</button></div>'+msgBox();
+    bindLeave();
+    get("netNew").onclick=()=>{clearSession();homepage()};
   }
 
   // Beamer-Dashboard: eigene rein lesende Ansicht. Teamentscheidungen werden nie angefordert.
@@ -352,10 +359,19 @@
       body+='<section class="panel" style="text-align:center;margin-bottom:16px"><div class="net-muted">VERBLEIBENDE ENTSCHEIDUNGSZEIT</div><div class="net-project-timer" id="netTime">'+formatTimer()+'</div>'+
         '<p class="net-sub">'+(secondsLeft()>0?"Die drei Skigebiete entscheiden gleichzeitig.":"Zeit abgelaufen. Die Spielleitung berechnet jetzt die Saison.")+'</p></section><section class="panel"><h3>Fortschritt der drei Skigebiete</h3><div id="netReady">'+projectorTeams()+'</div><p class="net-muted" id="netCount">'+room.teams.filter(x=>x.ready).length+' von 3 Teams haben ihre Entscheidungen eingereicht.</p></section>';
       if(room.season>1)body+=projectorStanding();
-    }else{
+    }else if(phase==="report"){
       body+=projectorStanding()+projectorResults();
-      if(phase==="report")body+='<p class="net-note" style="margin-top:14px">Die Spielleitung startet die nächste Saison, sobald die Ergebnisse besprochen sind.</p>';
-      else body+='<div class="panel" style="margin-top:16px"><h3>Reflexion</h3><p>Welche Anspruchsgruppen wurden besonders berücksichtigt? Welche Interessenkonflikte gab es? Wer setzte seine Strategie über fünf Saisons überzeugend um?</p></div>';
+      body+='<p class="net-note" style="margin-top:14px">Die Spielleitung startet die nächste Saison, sobald die Ergebnisse besprochen sind.</p>';
+    }else{
+      // Finaler Beamer nutzt denselben Schlussbildschirm. Fehlende vertrauliche
+      // Werte (z. B. Mitarbeitendenzahl) werden nicht aus START erfunden.
+      const finalTeams=projectorSnapshot().map(t=>({
+        name:t.name,slot:t.slot,state:t.state,
+        summary:(room.results||[]).find(x=>Number(x.slot)===Number(t.slot))||{}
+      }));
+      body+=finalDashboardHtml(finalTeams,{publicView:true});
+      const finalChart=projectorChart(projectorSnapshot());
+      if(finalChart)body+='<section class="panel" style="margin-top:18px"><h3>Gewinnentwicklung über die fünf Saisons</h3>'+finalChart+'</section>';
     }
     app().innerHTML=body+msgBox()+'</div>';
     bindLeave();
