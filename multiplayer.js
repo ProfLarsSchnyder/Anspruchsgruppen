@@ -70,24 +70,30 @@
   function leaveButton(){return '<button class="btn alt" id="netLeave">Verbindung verlassen</button>';}
   function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{const warning=isHost()?"Spielleitungszugang auf diesem Gerät verlassen? Der Zugangstoken wird gelöscht. Ohne ihn können Sie diese Runde nicht weiter steuern.":"Diese Ansicht verlassen? Die Spielrunde bleibt gespeichert.";if(confirm(warning)){clearSession();homepage();}};}
 
-  // Das Lehrpersonen-Dashboard ist der EINZIGE Einstieg für neue Online-Spiele.
-  // Die Erlaubnis wird nicht nur im Browser, sondern in Supabase überprüft.
+  // Öffentlich: Team beitreten oder geschützten Lehrpersonenbereich öffnen.
+  // Innerhalb des Lehrpersonenbereichs: Spiel erstellen oder Beamer-Ansicht öffnen.
   function teacherLanding(){
     if(!teacherPin){homepage();return;}
     room=null;lastView="teacher";lastVersion=-1;message="";
-    const h=get("headState");if(h)h.textContent="Lehrpersonen-Dashboard";
+    const h=get("headState");if(h)h.textContent="Lehrpersonenbereich";
     let prefill="";try{prefill=new URLSearchParams(location.search).get("code")||"";}catch{}
     const code=/^[A-F0-9]{6}$/.test(prefill)?prefill:"";
-    app().innerHTML='<div class="hero"><h2>Lehrpersonen-Dashboard</h2><p>Hier eröffnen Sie Ihre Spielrunde, verwalten den Spielablauf und öffnen die Beamer-Ansicht. Die drei Teams treten später selbstständig mit dem Spielcode bei.</p></div>'+
-      '<div class="net-role-grid">'+
-      '<section class="panel stack"><span class="net-tag">Spielleitung</span><h2>Neue Spielrunde</h2><p>Erstellt einen gemeinsamen Wettbewerb für drei Skigebiete über fünf Saisons. Der Zugang zur Steuerung wird auf diesem Gerät gespeichert.</p>'+
-      '<label for="netRoomTitle">Name der Spielrunde (optional)</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager">'+
-      '<button class="btn" id="netCreate">Spiel erstellen</button><p class="net-muted">Nach der Erstellung sehen Sie den Spielcode und die angemeldeten Teams.</p></section>'+
-      '<section class="panel stack"><span class="net-tag">Für den Beamer</span><h2>Bestehende Spielrunde anzeigen</h2><p>Öffnen Sie eine laufende Spielrunde im schreibgeschützten Beamer-Dashboard mit grossem Timer, Teamstatus und Rangliste.</p>'+
-      '<label for="netProjectCode">Spielcode</label><input class="net-input" id="netProjectCode" maxlength="6" value="'+html(code)+'" placeholder="z. B. A1B2C3" autocomplete="off">'+
-      '<button class="btn alt" id="netProject">Beamer-Ansicht öffnen</button><p class="net-muted">Die Spielsteuerung bleibt getrennt von der Beamer-Ansicht.</p></section></div>'+
-      '<div class="panel" style="margin-top:16px"><h3>Lokale Demonstration</h3><p class="net-muted">Die bestehende Ein-Gerät-Demo für die Unterrichtsvorbereitung kann weiterhin hier gestartet werden. Sie ist von den Online-Spielrunden getrennt.</p><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
-      '<div style="margin-top:15px"><button class="btn alt" id="netTeacherBack">Abmelden und zur Startseite</button></div>'+msgBox();
+    app().innerHTML='<div class="am-entry am-entry--teacher">'+
+      '<section class="am-welcome am-welcome--teacher"><div class="am-welcome-inner"><div class="am-eyebrow">SPIELLEITUNG · GESCHÜTZTER BEREICH</div>'+
+      '<h2>Ihre Spielrunde. Ihre Regie.</h2><p>Eröffnen Sie eine Partie mit drei Teams oder zeigen Sie den aktuellen Spielstand auf dem Beamer.</p></div></section>'+
+      '<div class="am-card-grid">'+
+      '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">NEUES SPIEL</p><h3>Spielrunde erstellen</h3></div></div>'+
+      '<p class="am-card-intro">Erstellen Sie einen Spielcode für drei Skigebiete. Sie steuern anschliessend den Ablauf über fünf Saisons.</p>'+
+      '<div class="am-form-group"><label for="netRoomTitle">Name der Spielrunde</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager" autocomplete="off"></div>'+
+      '<button class="btn am-submit" id="netCreate">Spiel erstellen <span aria-hidden="true">→</span></button>'+
+      '<p class="am-footnote">Der Steuerungszugang bleibt auf diesem Gerät gespeichert.</p></section>'+
+      '<section class="am-card am-card--secondary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">02</span><div><p class="am-card-overline">LAUFENDES SPIEL</p><h3>Beamer-Dashboard</h3></div></div>'+
+      '<p class="am-card-intro">Zeigen Sie den gemeinsamen Countdown, die Teamfortschritte und die wichtigsten Saisonergebnisse.</p>'+
+      '<div class="am-form-group"><label for="netProjectCode">Spielcode</label><input class="net-input am-input-code" id="netProjectCode" maxlength="6" value="'+html(code)+'" placeholder="z. B. A1B2C3" autocomplete="off" autocapitalize="characters"></div>'+
+      '<button class="btn alt am-submit" id="netProject">Beamer-Ansicht öffnen <span aria-hidden="true">↗</span></button>'+
+      '<p class="am-footnote">Schreibgeschützt – die Spielleitung bleibt davon getrennt.</p></section></div>'+
+      '<div class="am-tools"><div><strong>Für die Vorbereitung</strong><p>Das Spiel weiterhin unabhängig von der Online-Partie auf einem Gerät erkunden.</p></div><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
+      '<div class="am-back"><button class="btn alt" id="netTeacherBack">← Zur Startseite / abmelden</button></div>'+msgBox()+'</div>';
     get("netCreate").onclick=async()=>{
       const button=get("netCreate");if(button)button.disabled=true;
       try{
@@ -118,16 +124,27 @@
     const head=get("headState");if(head)head.textContent="Startseite";
     let preset="";try{preset=new URLSearchParams(location.search).get("code")||"";}catch{}
     const code=/^[A-F0-9]{6}$/.test(preset)?preset:"";
-    app().innerHTML='<div class="hero"><h2>AlpenManager</h2><p>Drei Skigebiete, fünf Saisons und sieben Anspruchsgruppen. Starten Sie einen gemeinsamen Wettbewerb oder treten Sie Ihrem Team bei.</p></div>'+
-      '<div class="net-role-grid">'+
-      '<section class="panel stack"><span class="net-tag">Für Lernende</span><h2>Spiel beitreten</h2><p>Sie erhalten den Spielcode von Ihrer Lehrperson. Wählen Sie anschliessend eines der drei Skigebiete.</p>'+
-      '<label for="netCode">Spielcode</label><input class="net-input" id="netCode" maxlength="6" placeholder="z. B. A1B2C3" autocomplete="off" value="'+html(code)+'">'+
-      '<label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" maxlength="36" placeholder="z. B. Bergblick" autocomplete="off">'+
-      '<label for="netSlot">Skigebiet</label><select class="net-input" id="netSlot"><option value="1">Skigebiet 1</option><option value="2">Skigebiet 2</option><option value="3">Skigebiet 3</option></select>'+
-      '<button class="btn" id="netJoin">Spiel beitreten</button></section>'+
-      '<section class="panel stack"><span class="net-tag">Nur für Lehrpersonen</span><h2>Lehrpersonen-Dashboard</h2><p>Melden Sie sich an, um eine neue Spielrunde zu erstellen, den Unterricht zu steuern oder Ergebnisse auf dem Beamer zu präsentieren.</p>'+
-      '<label for="netTeacherPin">Lehrpersonen-Passwort</label><input class="net-input" id="netTeacherPin" type="password" maxlength="16" autocomplete="off" placeholder="Passwort eingeben">'+
-      '<button class="btn alt" id="netTeacherLogin">Dashboard öffnen</button><p class="net-muted">Neue Spielrunden können ausschliesslich im Lehrpersonen-Dashboard erstellt werden.</p></section></div>'+msgBox();
+    app().innerHTML='<div class="am-entry am-entry--home">'+
+      '<section class="am-welcome"><div class="am-welcome-inner">'+
+      '<div class="am-eyebrow">PLANSPIEL · ANSPRUCHSGRUPPEN</div>'+
+      '<h2>Führen. Entscheiden.<br>Verantwortung übernehmen.</h2>'+
+      '<p>Leiten Sie Ihr Skigebiet durch fünf Wintersaisons. Ihre Entscheidungen beeinflussen Finanzen, Gäste und Anspruchsgruppen – manchmal erst Jahre später.</p>'+
+      '<div class="am-facts"><span><strong>5</strong> Saisons</span><span><strong>3</strong> Skigebiete</span><span><strong>7</strong> Anspruchsgruppen</span></div>'+
+      '</div></section>'+
+      '<div class="am-card-grid">'+
+      '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">FÜR LERNENDE</p><h3>Spiel beitreten</h3></div></div>'+
+      '<p class="am-card-intro">Ihre Lehrperson gibt Ihnen einen Spielcode. Wählen Sie anschliessend ein Skigebiet und starten Sie mit Ihrem Team.</p>'+
+      '<div class="am-form-group"><label for="netCode">Spielcode</label><input class="net-input am-input-code" id="netCode" maxlength="6" placeholder="z. B. A1B2C3" autocomplete="off" autocapitalize="characters" value="'+html(code)+'"></div>'+
+      '<div class="am-form-group"><label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" maxlength="36" placeholder="z. B. Bergblick" autocomplete="off"></div>'+
+      '<div class="am-form-group"><label for="netSlot">Skigebiet auswählen</label><select class="net-input" id="netSlot"><option value="1">Skigebiet 1</option><option value="2">Skigebiet 2</option><option value="3">Skigebiet 3</option></select></div>'+
+      '<button class="btn am-submit" id="netJoin">Spiel beitreten <span aria-hidden="true">→</span></button>'+
+      '<p class="am-footnote">Kein Passwort nötig. Pro Team wird ein Gerät verwendet.</p></section>'+
+      '<section class="am-card am-card--secondary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">02</span><div><p class="am-card-overline">FÜR LEHRPERSONEN</p><h3>Lehrpersonen-Dashboard</h3></div></div>'+
+      '<p class="am-card-intro">Erstellen und steuern Sie eine Spielrunde. Im Beamer-Dashboard behalten alle den Countdown und die Ergebnisse im Blick.</p>'+
+      '<div class="am-form-group"><label for="netTeacherPin">Lehrpersonen-Passwort</label><input class="net-input" id="netTeacherPin" type="password" maxlength="16" autocomplete="off" placeholder="Passwort eingeben"></div>'+
+      '<button class="btn alt am-submit" id="netTeacherLogin">Dashboard öffnen <span aria-hidden="true">→</span></button>'+
+      '<div class="am-teacher-hint"><strong>Im Dashboard können Sie:</strong><span>Spielrunde erstellen</span><span>Saisons steuern</span><span>Live-Ergebnisse projizieren</span></div>'+
+      '<p class="am-footnote">Neue Spielrunden sind nur für angemeldete Lehrpersonen zugänglich.</p></section></div>'+msgBox()+'</div>';
     get("netJoin").onclick=async()=>{
       try{
         status("Team wird angemeldet …");
