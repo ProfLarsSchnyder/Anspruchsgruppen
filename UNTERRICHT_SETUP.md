@@ -20,7 +20,7 @@
 4. Die Teams können ihre eigenen Entscheidungen speichern und bis zum Zeitablauf aktualisieren. Nach Ablauf werden weitere Änderungen vom Server abgelehnt.
 5. Sobald alle Teams eingereicht haben, kann die Spielleitung schon früher **Saison auswerten** wählen. Sonst wird die Saison nach Zeitablauf auf dem offenen Spielleitungsgerät berechnet.
 6. Alle drei Teams erhalten ihren ausführlichen Saisonbericht. Im gemeinsamen Dashboard erscheinen Rangliste, kumulierter Gewinn, Gäste, Anspruchsgruppen und Diagramme.
-7. Die Spielleitung startet im selben Dashboard die nächste Saison. Nach fünf Saisons erscheint die erweiterte Schlussrangliste mit Podest, Teamkennzahlen und Bestwerten. Die Reflexion erfolgt separat im Unterricht.
+7. Die Spielleitung startet im selben Dashboard die nächste Saison. Nach fünf Saisons erscheint die erweiterte Schlussrangliste mit Podest, Teamkennzahlen und Bestwerten.
 
 ## Technische Hinweise
 - Die Browser aktualisieren den Spielzustand etwa alle zwei Sekunden. Bei langsamem Internet können kurze Verzögerungen auftreten.
