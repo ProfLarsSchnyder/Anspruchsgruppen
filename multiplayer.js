@@ -514,7 +514,7 @@
     if(toolbar){
       toolbar.innerHTML='<div class="demo-preview-label"><strong>DEMO · LEHRPERSONEN-VORSCHAU</strong><small>Beispieldaten · keine Verbindung zu Supabase</small></div>'+
        '<label>Ansicht <select id="demoPreviewRole"><option value="teacher">Spielleitung</option><option value="projector">Beamer-Dashboard</option></select></label>'+
-       '<label>Spielphase <select id="demoPreviewPhase"><option value="lobby">Warteraum</option><option value="decision">Strategiephase</option><option value="report">Saisonbericht</option><option value="finished">Schlussrangliste</option></select></label>'+
+       '<label>Spielphase <select id="demoPreviewPhase"><option value="lobby">Warteraum</option><option value="intro">Saisonereignis</option><option value="decision">Strategiephase</option><option value="report">Saisonbericht</option><option value="finished">Schlussrangliste</option></select></label>'+
        '<label>Saison <select id="demoPreviewSeason">'+[1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' / 5</option>').join("")+'</select></label>'+
        '<a class="btn alt demo-preview-exit" href="?">Zur Startseite</a>';
       get("demoPreviewRole").value=previewRole;
@@ -525,20 +525,17 @@
       get("demoPreviewPhase").onchange=()=>{previewPhase=get("demoPreviewPhase").value;renderDemoPreview()};
       get("demoPreviewSeason").onchange=()=>{previewSeason=Number(get("demoPreviewSeason").value)||2;renderDemoPreview()};
     }
-    // Originale UI-Komponenten aus dem Mehrspielermodus verwenden.
-    if(previewRole==="projector")projectorPage();
-    else if(previewPhase==="lobby")lobby();
-    else if(previewPhase==="decision")hostDecisions();
-    else if(previewPhase==="report")report();
-    else finished();
+    // Lehrer-Vorschau zeigt ebenfalls das kombinierte Live-Dashboard mit Steuerbuttons.
+    projectorPage();
 
     // Sämtliche Aktionen bleiben lokal. Keine Online-RPC oder Speicherung.
     const leave=get("netLeave");if(leave)leave.onclick=()=>{location.href=location.pathname};
     const hostLink=app().querySelector('a[href*="dashboard=1"]');
     if(hostLink){hostLink.href="?demo=projector";hostLink.target="_blank";}
-    const start=get("netStart");if(start)start.onclick=()=>{previewPhase="decision";renderDemoPreview()};
+    const start=get("netStart");if(start)start.onclick=()=>{previewPhase="intro";renderDemoPreview()};
+    const open=get("netOpen");if(open)open.onclick=()=>{previewPhase="decision";renderDemoPreview()};
     const finish=get("netFinish");if(finish){finish.disabled=false;finish.onclick=()=>{previewPhase="report";renderDemoPreview()};}
-    const next=get("netNext");if(next)next.onclick=()=>{previewPhase=previewSeason===5?"finished":"decision";previewSeason=Math.min(5,previewSeason+1);renderDemoPreview()};
+    const next=get("netNext");if(next)next.onclick=()=>{previewPhase=previewSeason===5?"finished":"intro";previewSeason=Math.min(5,previewSeason+1);renderDemoPreview()};
     const again=get("netNew");if(again)again.onclick=()=>{previewPhase="lobby";previewSeason=1;renderDemoPreview()};
     const marker=get("demoPreviewMarker");if(marker)marker.textContent="VORSCHAU – keine echten Teamdaten";
   }
