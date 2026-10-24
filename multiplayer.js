@@ -78,16 +78,16 @@
   // Echte Nutzerinteraktionen aktualisieren die Frist, automatische Abfragen niemals.
   function formatIdleTime(){
     if(!room?.last_activity)return "5:00";
-    const left=Math.max(0,Math.ceil((Date.parse(room.last_activity)+300000-Date.now())/1000));
+    const left=Math.max(0,Math.ceil((Date.parse(room.last_activity)+600000-Date.now())/1000));
     return Math.floor(left/60)+":"+String(left%60).padStart(2,"0");
   }
   function refreshIdleDisplay(){
     const el=get("netIdleCountdown");
-    if(el)el.textContent="Automatische Löschung nach fünf Minuten ohne Bedienung · "+formatIdleTime()+" verbleibend";
+    if(el)el.textContent="Automatische Löschung nach zehn Minuten ohne Bedienung · "+formatIdleTime()+" verbleibend";
   }
   function returnAfterExpiry(note){
     clearSession();
-    message=note||"Die Spielrunde ist nicht mehr verfügbar. Nach fünf Minuten Inaktivität werden Spiele automatisch gelöscht.";
+    message=note||"Die Spielrunde ist nicht mehr verfügbar. Nach zehn Minuten Inaktivität werden Spiele automatisch gelöscht.";
     homepage();
     status(message,true);
   }
@@ -117,7 +117,7 @@
       '<p class="am-card-intro">Erstellen Sie einen Spielcode für drei Skigebiete. Das gemeinsame Dashboard kann anschliessend auch im Vollbild am Beamer gezeigt werden.</p>'+
       '<div class="am-form-group"><label for="netRoomTitle">Name der Spielrunde</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager" autocomplete="off"></div>'+
       '<button class="btn am-submit" id="netCreate">Spiel erstellen und Dashboard öffnen <span aria-hidden="true">→</span></button>'+
-      '<p class="am-footnote">Nach fünf Minuten ohne Aktivität auf allen Geräten wird die gesamte Spielrunde automatisch gelöscht.</p></section></div>'+
+      '<p class="am-footnote">Nach zehn Minuten ohne Aktivität auf allen Geräten wird die gesamte Spielrunde automatisch gelöscht.</p></section></div>'+
       '<div class="am-tools"><div><strong>Für die Vorbereitung</strong><p>Testen Sie die kombinierte Lehreranzeige oder das Spiel unabhängig von Supabase.</p></div><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
       '<div class="am-back"><button class="btn alt" id="netTeacherBack">← Zur Startseite / abmelden</button></div>'+msgBox()+'</div>';
     get("netCreate").onclick=async()=>{
@@ -153,7 +153,7 @@
       '<div class="am-form-group"><label for="netCode">Spielcode</label><input class="net-input am-input-code" id="netCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="z. B. 4821" autocomplete="off" value="'+html(code)+'"></div>'+
       '<div class="am-form-group"><label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" maxlength="36" placeholder="z. B. Bergblick" autocomplete="off"></div>'+
       '<button class="btn am-submit" id="netJoin">Spiel beitreten <span aria-hidden="true">→</span></button>'+
-      '<p class="am-footnote">Kein Passwort nötig. Pro Team wird ein Gerät verwendet. Fünf Minuten ohne Aktivität löschen die Runde automatisch.</p></section>'+
+      '<p class="am-footnote">Kein Passwort nötig. Pro Team wird ein Gerät verwendet. Zehn Minuten ohne Aktivität löschen die Runde automatisch.</p></section>'+
       '<section class="am-card am-card--secondary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">02</span><div><p class="am-card-overline">FÜR LEHRPERSONEN</p><h3>Lehrpersonen-Dashboard</h3></div></div>'+
       '<p class="am-card-intro">Erstellen und steuern Sie eine Spielrunde. Im Beamer-Dashboard behalten alle den Countdown und die Ergebnisse im Blick.</p>'+
       '<div class="am-form-group"><label for="netTeacherPin">Lehrpersonen-Passwort</label><input class="net-input" id="netTeacherPin" type="password" maxlength="16" autocomplete="off" placeholder="Passwort eingeben"></div>'+
@@ -206,12 +206,13 @@
       '<div class="event-photo" style="background-image:url(&quot;'+encodeURI(imageFile)+'?v=20261022-online&quot;)"></div>'+
       '<div class="event-shade"></div><div class="event-content"><div class="kicker">Saison '+room.season+' von 5 · Eilmeldung</div>'+
       '<h2>'+html(e.title)+'</h2><p>'+html(e.desc)+'</p>'+
-      (isHost()?'<button class="btn" id="netOpen">Strategiephase starten · 4 Minuten</button>':'<p class="net-note">Die Lehrperson startet gleich den gemeinsamen Vier-Minuten-Countdown.</p>')+
+      (isHost()?'<button class="btn" id="netOpen">Strategiephase starten · '+roundMinutes()+' Minuten</button>':'<p class="net-note">Die Lehrperson startet gleich den gemeinsamen Countdown von '+roundMinutes()+' Minuten.</p>')+
       '</div></div>'+msgBox();
     bindLeave();
     if(get("netOpen"))get("netOpen").onclick=()=>control("open");
   }
-  function secondsLeft(){return room&&room.deadline?Math.max(0,Math.ceil((Date.parse(room.deadline)-Date.now())/1000)):240;}
+  function roundMinutes(){return room?.season===1?6:3;}
+  function secondsLeft(){return room&&room.deadline?Math.max(0,Math.ceil((Date.parse(room.deadline)-Date.now())/1000)):roundMinutes()*60;}
   function formatTimer(){const s=secondsLeft();return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
   function refreshTimer(){const el=get("netTime");if(el&&room?.phase==="decision"){el.textContent=formatTimer();el.style.color=secondsLeft()===0?"#b03238":"#12668b";}}
   function updateReady(){
@@ -234,7 +235,7 @@
       '<label for="segment">Zielgruppe der Werbung</label><select id="segment" class="net-input">'+SEGMENTS.map(x=>'<option '+(x===d.segment?"selected":"")+'>'+html(x)+'</option>').join("")+'</select>'+
       '<label for="supplier">Lieferantenmodell</label><select id="supplier" class="net-input"><option value="günstig">Günstig – Ersparnis, aber Risiko</option><option value="zuverlässig">Zuverlässig – ausgewogen</option><option value="nachhaltig">Nachhaltig – teurer, umweltfreundlich</option></select></section>'+
       '<section class="panel"><h3>Einmalige Investition</h3><p class="hint">Jedes Projekt ist nur einmal kaufbar.</p><label class="option"><input type="radio" name="investment" value="none" '+(noInvest?"checked":"")+'>Keine Investition</label>'+allInvest+'</section>'+
-      '<section class="panel"><h3>Entscheidungen einreichen</h3><p>Sie können Ihre Eingaben innerhalb der Strategiephase mehrfach aktualisieren. Nach Ablauf der vier Minuten sind sie gesperrt.</p><button class="btn" id="netSave">Entscheidungen speichern</button><p id="netSaveStatus" class="net-muted">'+(t?.ready?"Ihre letzten Entscheidungen wurden gespeichert.":"Noch keine Entscheidung gespeichert.")+'</p></section></div>'+
+      '<section class="panel"><h3>Entscheidungen einreichen</h3><p>Sie können Ihre Eingaben innerhalb der Strategiephase mehrfach aktualisieren. Nach Ablauf der '+roundMinutes()+' Minuten sind sie gesperrt.</p><button class="btn" id="netSave">Entscheidungen speichern</button><p id="netSaveStatus" class="net-muted">'+(t?.ready?"Ihre letzten Entscheidungen wurden gespeichert.":"Noch keine Entscheidung gespeichert.")+'</p></section></div>'+
       '<div class="stack"><section class="panel"><h3>Unternehmenskennzahlen</h3>'+metricHtml(s)+'</section>'+
       '<section class="panel"><h3>Die sieben Anspruchsgruppen</h3>'+groupsHtml(s)+'</section>'+
       '<section class="panel"><h3>Kapazität und Nachfrage</h3><div id="netCapacity"></div></section></div></div>';
@@ -259,8 +260,8 @@
   }
   function hostDecisions(){
     app().innerHTML=commonHeader()+'<div class="net-top"><h2>Gemeinsame Strategiephase</h2><div class="net-timer" id="netTime">'+formatTimer()+'</div></div>'+
-      '<div class="net-columns"><section class="panel"><h3 id="netCount">0 / 3 Teams</h3><div id="netReady">'+namesAndReady()+'</div><p class="net-note">Der Countdown läuft auf dem Server für alle gleichzeitig. Nach Zeitablauf werden weitere Eingaben abgewiesen.</p><button class="btn" id="netFinish">Saison auswerten</button><p class="net-muted">Vorzeitig möglich, wenn alle Teams ihre Entscheidungen eingereicht haben. Sonst nach Ablauf der vier Minuten.</p></section>'+
-      '<section class="panel"><h3>Spielleitung</h3><p>Die Lernenden sehen nur ihre eigenen Entscheidungen. Sobald die Saison beendet ist, werden alle drei Skigebiete zusammen berechnet und die Resultate veröffentlicht.</p><p class="net-muted">Die Lehrperson löst die Auswertung selbst aus, sobald alle drei Teams eingereicht haben oder vier Minuten vergangen sind.</p></section></div>'+msgBox();
+      '<div class="net-columns"><section class="panel"><h3 id="netCount">0 / 3 Teams</h3><div id="netReady">'+namesAndReady()+'</div><p class="net-note">Der Countdown läuft auf dem Server für alle gleichzeitig. Nach Zeitablauf werden weitere Eingaben abgewiesen.</p><button class="btn" id="netFinish">Saison auswerten</button><p class="net-muted">Vorzeitig möglich, wenn alle Teams ihre Entscheidungen eingereicht haben. Sonst nach Ablauf der '+roundMinutes()+' Minuten.</p></section>'+
+      '<section class="panel"><h3>Spielleitung</h3><p>Die Lernenden sehen nur ihre eigenen Entscheidungen. Sobald die Saison beendet ist, werden alle drei Skigebiete zusammen berechnet und die Resultate veröffentlicht.</p><p class="net-muted">Die Lehrperson löst die Auswertung selbst aus, sobald alle drei Teams eingereicht haben oder '+roundMinutes()+' Minuten vergangen sind.</p></section></div>'+msgBox();
     bindLeave();get("netFinish").onclick=finishSeason;updateReady();
   }
   function scoreboard(){
@@ -372,11 +373,11 @@
       action='<button class="btn" id="netStart" '+(count!==3?'disabled':'')+'>Spiel starten →</button>';
       hint=count===3?"Alle drei Skigebiete sind angemeldet.":"Warten auf drei echte Teams: "+count+" von 3 angemeldet.";
     }else if(phase==="intro"){
-      action='<button class="btn" id="netOpen">Strategiephase starten · 4 Minuten →</button>';
+      action='<button class="btn" id="netOpen">Strategiephase starten · '+roundMinutes()+' Minuten →</button>';
       hint="Alle Teams sehen dasselbe Saisonereignis.";
     }else if(phase==="decision"){
       action='<button class="btn" id="netFinish" '+(ready!==3&&secondsLeft()>0?'disabled':'')+'>Saison auswerten →</button>';
-      hint=ready===3?"Alle Entscheidungen gespeichert. Sie können die Saison jetzt auswerten.":secondsLeft()<=0?"Vier Minuten abgelaufen. Sie können die Saison auswerten.":"Auswertung möglich, sobald alle Teams gespeichert haben, sonst nach vier Minuten.";
+      hint=ready===3?"Alle Entscheidungen gespeichert. Sie können die Saison jetzt auswerten.":secondsLeft()<=0?"Die Entscheidungszeit ist abgelaufen. Sie können die Saison auswerten.":"Auswertung möglich, sobald alle Teams gespeichert haben, sonst nach '+roundMinutes()+' Minuten.";
     }else if(phase==="report"){
       action='<button class="btn" id="netNext">'+(room.season===5?"Schlussrangliste anzeigen":"Nächste Saison vorbereiten")+' →</button>';
       hint="Besprechen Sie die Ergebnisse und starten Sie anschliessend die nächste Saison.";
@@ -455,7 +456,7 @@
         
       }
     }catch(e){
-      if(/Inaktivität beendet/.test(e.message))returnAfterExpiry("Die Spielrunde wurde nach fünf Minuten ohne Aktivität beendet.");
+      if(/Inaktivität beendet/.test(e.message))returnAfterExpiry("Die Spielrunde wurde nach zehn Minuten ohne Aktivität beendet.");
       else if(/Zugang ungültig|Dashboard-Passwort ungültig|Spielcode nicht gefunden/.test(e.message))returnAfterExpiry();
       else status(e.message,true);
     }finally{
@@ -539,7 +540,7 @@
     return {
       code:"0000",title:"AlpenManager – Vorschau",phase:previewPhase,
       season:previewPhase==="finished"?5:previewPhase==="lobby"?1:previewSeason,
-      deadline:previewPhase==="decision"?new Date(Date.now()+240000).toISOString():null,
+      deadline:previewPhase==="decision"?new Date(Date.now()+(previewSeason===1?360:180)*1000).toISOString():null,
       version:1,results,teams
     };
   }
