@@ -8,6 +8,7 @@
   const STORAGE_KEY = "alpenmanager_online_session_v1";
   const PROJECTOR_KEY = "alpenmanager_beamer_session_v1";
   let session = null, room = null, polling = false, working = false, refreshPending = false;
+  let lastTouchAttempt = 0;
   let teacherPin = ""; // Nur im Arbeitsspeicher, nicht dauerhaft speichern.
   let previewActive = false;
   let lastView = "", lastVersion = -1, reportSlot = 1, message = "", lastFinishAttempt = 0;
@@ -25,13 +26,14 @@
   const stored = () => { try { return JSON.parse(sessionStorage.getItem(PROJECTOR_KEY))||JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch { return null; } };
   function saveSession(s) {
     session=s;
+    lastTouchAttempt=0;
     if(s.role==="projector"){sessionStorage.setItem(PROJECTOR_KEY,JSON.stringify(s));}
     else{sessionStorage.removeItem(PROJECTOR_KEY);localStorage.setItem(STORAGE_KEY,JSON.stringify(s));}
   }
   function clearSession(){
     if(session?.role==="projector")sessionStorage.removeItem(PROJECTOR_KEY);
     else{localStorage.removeItem(STORAGE_KEY);sessionStorage.removeItem(PROJECTOR_KEY);}
-    session=null;room=null;lastView="";lastVersion=-1;
+    session=null;room=null;lastView="";lastVersion=-1;lastTouchAttempt=0;
   }
   function status(messageText, error) {
     message = messageText || "";
@@ -50,7 +52,7 @@
     let data; try { data=raw?JSON.parse(raw):null; } catch { data=null; }
     if (!response.ok) {
       if (response.status===404 || (data && data.code==="PGRST202"))
-        throw new Error("Supabase-Funktionen fehlen oder sind veraltet. Bitte UPDATE_4_STELLIG_SUPABASE.sql im Supabase SQL Editor ausführen (bei Neuinstallation: supabase_setup.sql).");
+        throw new Error("Supabase-Funktionen fehlen oder sind veraltet. Bitte UPDATE_5_MIN_INAKTIVITAET.sql im Supabase SQL Editor ausführen (bei Neuinstallation: supabase_setup.sql).");
       throw new Error((data && (data.message || data.error_description)) || "Supabase-Fehler ("+response.status+")");
     }
     return data;
@@ -73,6 +75,36 @@
   function bindLeave(){const el=get("netLeave");if(el)el.onclick=()=>{const warning=isHost()?"Spielleitungszugang auf diesem Gerät verlassen? Der Zugangstoken wird gelöscht. Ohne ihn können Sie diese Runde nicht weiter steuern.":"Diese Ansicht verlassen? Die Spielrunde bleibt gespeichert.";if(confirm(warning)){clearSession();homepage();}};}
 
   // Neue Spielrunden öffnen direkt das kombinierte Beamer- und Steuerungsdashboard.
+  // Echte Nutzerinteraktionen aktualisieren die Frist, automatische Abfragen niemals.
+  function formatIdleTime(){
+    if(!room?.last_activity)return "5:00";
+    const left=Math.max(0,Math.ceil((Date.parse(room.last_activity)+300000-Date.now())/1000));
+    return Math.floor(left/60)+":"+String(left%60).padStart(2,"0");
+  }
+  function refreshIdleDisplay(){
+    const el=get("netIdleCountdown");
+    if(el)el.textContent="Automatische Löschung nach fünf Minuten ohne Bedienung · "+formatIdleTime()+" verbleibend";
+  }
+  function returnAfterExpiry(note){
+    clearSession();
+    message=note||"Die Spielrunde ist nicht mehr verfügbar. Nach fünf Minuten Inaktivität werden Spiele automatisch gelöscht.";
+    homepage();
+    status(message,true);
+  }
+  function recordRealActivity(event){
+    if(!event.isTrusted||!session?.token||!room||previewActive||isProjector())return;
+    if(!app()?.contains(event.target)||event.target?.closest?.("#netLeave"))return;
+    if(event.type==="keydown"&&["Shift","Control","Alt","Meta","Tab"].includes(event.key))return;
+    const now=Date.now();
+    if(now-lastTouchAttempt<20000)return;
+    lastTouchAttempt=now;
+    const code=session.code,token=session.token;
+    rpc("am_touch_room",{p_code:code,p_token:token}).catch(e=>{
+      if(session?.code!==code||session?.token!==token)return;
+      if(/Inaktivität beendet|Spielcode oder Zugang ungültig/.test(e.message))returnAfterExpiry();
+      else if(/SQL Editor/.test(e.message))status(e.message,true);
+    });
+  }
   function teacherLanding(){
     if(!teacherPin){homepage();return;}
     room=null;lastView="teacher";lastVersion=-1;message="";
@@ -85,7 +117,7 @@
       '<p class="am-card-intro">Erstellen Sie einen Spielcode für drei Skigebiete. Das gemeinsame Dashboard kann anschliessend auch im Vollbild am Beamer gezeigt werden.</p>'+
       '<div class="am-form-group"><label for="netRoomTitle">Name der Spielrunde</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager" autocomplete="off"></div>'+
       '<button class="btn am-submit" id="netCreate">Spiel erstellen und Dashboard öffnen <span aria-hidden="true">→</span></button>'+
-      '<p class="am-footnote">Der Steuerungszugang bleibt auf diesem Gerät gespeichert und wird nach dem Erstellen direkt geöffnet.</p></section></div>'+
+      '<p class="am-footnote">Nach fünf Minuten ohne Aktivität auf allen Geräten wird die gesamte Spielrunde automatisch gelöscht.</p></section></div>'+
       '<div class="am-tools"><div><strong>Für die Vorbereitung</strong><p>Testen Sie die kombinierte Lehreranzeige oder das Spiel unabhängig von Supabase.</p></div><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
       '<div class="am-back"><button class="btn alt" id="netTeacherBack">← Zur Startseite / abmelden</button></div>'+msgBox()+'</div>';
     get("netCreate").onclick=async()=>{
@@ -121,7 +153,7 @@
       '<div class="am-form-group"><label for="netCode">Spielcode</label><input class="net-input am-input-code" id="netCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="z. B. 4821" autocomplete="off" value="'+html(code)+'"></div>'+
       '<div class="am-form-group"><label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" maxlength="36" placeholder="z. B. Bergblick" autocomplete="off"></div>'+
       '<button class="btn am-submit" id="netJoin">Spiel beitreten <span aria-hidden="true">→</span></button>'+
-      '<p class="am-footnote">Kein Passwort nötig. Pro Team wird ein Gerät verwendet.</p></section>'+
+      '<p class="am-footnote">Kein Passwort nötig. Pro Team wird ein Gerät verwendet. Fünf Minuten ohne Aktivität löschen die Runde automatisch.</p></section>'+
       '<section class="am-card am-card--secondary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">02</span><div><p class="am-card-overline">FÜR LEHRPERSONEN</p><h3>Lehrpersonen-Dashboard</h3></div></div>'+
       '<p class="am-card-intro">Erstellen und steuern Sie eine Spielrunde. Im Beamer-Dashboard behalten alle den Countdown und die Ergebnisse im Blick.</p>'+
       '<div class="am-form-group"><label for="netTeacherPin">Lehrpersonen-Passwort</label><input class="net-input" id="netTeacherPin" type="password" maxlength="16" autocomplete="off" placeholder="Passwort eingeben"></div>'+
@@ -155,7 +187,7 @@
   }
   function commonHeader() {
     return pageTop(isHost()?"Spielleitung":(own()?.name||"Ihr Skigebiet"))+
-      '<div class="panel" style="margin-bottom:16px"><div class="net-flex"><div><span class="net-muted">Spielcode</span><div class="net-code">'+html(room.code)+'</div></div><div><span class="net-muted">Saison</span><h3>'+room.season+' / 5</h3></div><div class="net-flex">'+(isHost()?'<a class="btn alt" target="_blank" rel="noopener" href="?dashboard=1&amp;code='+encodeURIComponent(room.code)+'">Beamer-Dashboard öffnen</a>':'')+leaveButton()+'</div></div></div>';
+      '<div class="panel" style="margin-bottom:16px"><p id="netIdleCountdown" class="net-muted" style="margin:0 0 12px"></p><div class="net-flex"><div><span class="net-muted">Spielcode</span><div class="net-code">'+html(room.code)+'</div></div><div><span class="net-muted">Saison</span><h3>'+room.season+' / 5</h3></div><div class="net-flex">'+(isHost()?'<a class="btn alt" target="_blank" rel="noopener" href="?dashboard=1&amp;code='+encodeURIComponent(room.code)+'">Beamer-Dashboard öffnen</a>':'')+leaveButton()+'</div></div></div>';
   }
   function namesAndReady(){
     return (room.teams||[]).map(t=>'<div class="net-item net-flex"><div><strong>Skigebiet '+t.slot+': '+html(t.name)+'</strong><span class="net-muted">'+(room.phase==="decision"?(t.ready?"Entscheidungen eingereicht":"Entscheidungen ausstehend"):"Teilnahme bestätigt")+'</span></div><span class="net-flag '+(room.phase==="decision"&&!t.ready?"wait":"")+'">'+(room.phase==="decision"?(t.ready?"Bereit":"Offen"):"Beigetreten")+'</span></div>').join("");
@@ -351,7 +383,7 @@
     }else{
       hint="Die Partie ist abgeschlossen. Für eine neue Partie zur Startseite zurückkehren.";
     }
-    return '<section class="panel net-host-controls"><div><div class="net-host-eyebrow">SPIELLEITUNG · AKTIVE SPIELRUNDE</div><h3>Spielsteuerung</h3><p class="net-muted">'+hint+'</p></div><div class="net-host-actions">'+action+'</div></section>';
+    return '<section class="panel net-host-controls"><div><div class="net-host-eyebrow">SPIELLEITUNG · AKTIVE SPIELRUNDE</div><h3>Spielsteuerung</h3><p class="net-muted">'+hint+'</p><p id="netIdleCountdown" class="net-muted" style="font-weight:650"></p></div><div class="net-host-actions">'+action+'</div></section>';
   }
   function bindHostDashboardControls(){
     const start=get("netStart");if(start)start.onclick=()=>control("start");
@@ -405,6 +437,7 @@
     else if(room.phase==="report")report();
     else if(room.phase==="finished")finished();
     lastView=room.phase;lastVersion=room.version;
+    refreshIdleDisplay();
   }
   async function refresh(force) {
     if(!session)return;
@@ -417,11 +450,13 @@
       if(changed)showPage();
       else {
         lastVersion=room.version;
+        refreshIdleDisplay();
         if(room.phase==="decision"){refreshTimer();if(!isHost()&&!isProjector()&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";}}
         
       }
     }catch(e){
-      if(/Zugang ungültig|Dashboard-Passwort ungültig/.test(e.message)){clearSession();message="Der gespeicherte Zugang ist nicht mehr gültig.";homepage();}
+      if(/Inaktivität beendet/.test(e.message))returnAfterExpiry("Die Spielrunde wurde nach fünf Minuten ohne Aktivität beendet.");
+      else if(/Zugang ungültig|Dashboard-Passwort ungültig|Spielcode nicht gefunden/.test(e.message))returnAfterExpiry();
       else status(e.message,true);
     }finally{
       polling=false;
@@ -564,7 +599,8 @@
     else{session=stored();}
     if(session&&session.code&&(session.token||(session.role==="projector"&&session.pin))){app().innerHTML='<section class="panel"><h2>Spielverbindung wird wiederhergestellt</h2><p>Verbinde mit Supabase und lade den aktuellen Spielstand …</p><button class="btn alt" id="netLeave">Zur Startseite</button>'+msgBox();bindLeave();refresh(true);}
     else if(!dashboardRequested){clearSession();homepage();}
-    setInterval(()=>{if(!session)return;refreshTimer();if(!isHost()&&!isProjector()&&room?.phase==="decision"&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost()&&room?.phase==="decision")updateReady();},500);
+    ["pointerdown","keydown","input","wheel"].forEach(eventName=>document.addEventListener(eventName,recordRealActivity,{passive:true,capture:true}));
+    setInterval(()=>{if(!session)return;refreshIdleDisplay();refreshTimer();if(!isHost()&&!isProjector()&&room?.phase==="decision"&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost()&&room?.phase==="decision")updateReady();},500);
     setInterval(()=>{if(session&&!polling&&!working)refresh(false);},1900);
   }
   document.addEventListener("DOMContentLoaded",start);
