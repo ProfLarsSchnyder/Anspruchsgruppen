@@ -16,7 +16,7 @@ https://proflarsschnyder.github.io/Anspruchsgruppen/
 ## Supabase einrichten oder aktualisieren
 
 - **Neuinstallation:** Datei [supabase_setup.sql](supabase_setup.sql) vollständig im Supabase SQL Editor ausführen.
-- **Bereits mit Vierstellercodes eingerichtete Datenbank:** Datei [UPDATE_5_MIN_INAKTIVITAET.sql](UPDATE_5_MIN_INAKTIVITAET.sql) einmal vollständig im Supabase SQL Editor ausführen. Falls das Vierstellercode-Update noch fehlt, zuerst [UPDATE_4_STELLIG_SUPABASE.sql](UPDATE_4_STELLIG_SUPABASE.sql) ausführen.
+- **Bereits mit Vierstellercodes eingerichtete Datenbank:** Zuerst im Supabase Dashboard unter **Integrations → Cron** die Erweiterung `pg_cron` aktivieren. Danach [UPDATE_5_MIN_INAKTIVITAET.sql](UPDATE_5_MIN_INAKTIVITAET.sql) einmal vollständig im SQL Editor ausführen. Falls das Vierstellercode-Update noch fehlt, zuerst [UPDATE_4_STELLIG_SUPABASE.sql](UPDATE_4_STELLIG_SUPABASE.sql) ausführen. Die Datei installiert `pg_cron` nicht selbst, da dies auf manchen Projekten den Fehler `2BP01` auslösen kann.
 - Der Supabase-Publishable-Key darf öffentlich sein. Geheime Datenbank- oder Service-Role-Keys gehören niemals ins Repository.
 - Alte Spielrunden behalten ihre sechsstelligen Codes. Für einen neuen Unterrichtsdurchlauf nach dem SQL-Update eine **neue Spielrunde** erstellen.
 
