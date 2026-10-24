@@ -141,6 +141,65 @@ main:has(.am-entry){max-width:1110px;padding-top:20px}
 .demo-preview-toolbar select{width:auto;min-width:118px;border-radius:7px;padding:7px 9px;border:1px solid #a6c0d2;background:#fff;color:#193d53;font-size:13px}
 .demo-preview-toolbar .demo-preview-exit{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;padding:10px 12px;font-size:12px;white-space:nowrap}
 @media(max-width:750px){.demo-preview-toolbar{position:relative;top:auto;align-items:stretch}.demo-preview-toolbar label{flex:1;min-width:130px}.demo-preview-toolbar select{width:100%}.demo-preview-label{width:100%}}
+
+/* Einheitliches Finale in lokaler Demo, Online-Spiel und Beamer. */
+.final-dashboard{width:100%;max-width:1210px;margin:0 auto;color:#1a354a}
+.final-hero{border-radius:20px;padding:30px 32px;background:linear-gradient(120deg,#10344f,#11617c);color:#fff;box-shadow:0 10px 22px rgba(8,43,67,.1)}
+.final-hero-overline{font-size:11px;letter-spacing:.14em;font-weight:800;color:#bfe7f6}
+.final-hero h2{margin:9px 0 8px;font-size:clamp(27px,3.5vw,40px);line-height:1.12;color:#fff}
+.final-hero p{color:#e1f2f7;font-size:14px;margin:0}
+.final-weights{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.final-weights span{font-size:12px;font-weight:700;color:#ecf9ff;padding:7px 11px;border:1px solid #5994ac;border-radius:999px}
+.final-section-title{font-size:20px;margin:26px 0 13px;color:#1a384d}
+.final-podium{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;align-items:end}
+.final-podium-card{min-width:0;text-align:center;border-radius:17px;border:1px solid #d6e5ed;background:#fff;padding:23px 15px 20px;box-shadow:0 6px 20px rgba(18,57,80,.05)}
+.final-podium-card--first{background:linear-gradient(170deg,#fff8e7,#fff);border-color:#e7ca78;padding-top:34px;padding-bottom:27px;box-shadow:0 8px 26px rgba(141,102,21,.12)}
+.final-medal{font-size:33px;margin-bottom:8px}
+.final-podium-rank{font-size:12px;font-weight:800;color:#698096}
+.final-podium-card h3{font-size:clamp(16px,2vw,22px);margin:7px 0 11px;overflow-wrap:anywhere}
+.final-podium-number{font-size:clamp(34px,5vw,51px);line-height:1.06;font-weight:900;color:#0e6789;font-variant-numeric:tabular-nums}
+.final-podium-number span{font-size:16px;color:#738a99}
+.final-podium-bottom{font-size:11px;color:#48677a;margin-top:10px}
+.final-team-list{display:grid;gap:17px}
+.final-team{background:#fff;border:1px solid #d8e7ef;border-radius:17px;padding:23px 24px;box-shadow:0 5px 16px rgba(19,62,86,.035)}
+.final-team--winner{border-color:#e6ce87;background:linear-gradient(170deg,#fffbf2 0%,#fff 40%)}
+.final-team-header{display:flex;justify-content:space-between;gap:15px;align-items:center}
+.final-team-rank{font-size:12px;font-weight:800;color:#7a6a43}
+.final-team h3{margin:5px 0;font-size:23px;line-height:1.25}
+.final-eligibility{display:inline-block;color:#1b795d;font-weight:700;font-size:11px}
+.final-eligibility--bad{color:#a9423e}
+.final-team-score{font-size:clamp(30px,4.6vw,46px);font-weight:900;white-space:nowrap;color:#0b7190}
+.final-team-score span{font-size:12px;color:#647e8d;font-weight:700;display:block;text-align:right}
+.final-team-awards{display:flex;gap:7px;flex-wrap:wrap;margin:13px 0 0}
+.final-team-awards span{background:#eaf5fa;color:#1e647e;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:750}
+.final-team-content{display:grid;grid-template-columns:1fr 1.2fr;gap:23px;margin-top:19px}
+.final-team-scores{display:grid;align-content:start;gap:12px}
+.final-score-label{display:flex;align-items:center;justify-content:space-between;gap:7px;font-size:12px;color:#365568}
+.final-score-label strong{color:#123d53}
+.final-score-track{margin-top:5px;background:#e9f0f3;height:9px;border-radius:20px;overflow:hidden}
+.final-score-track i{display:block;height:100%;background:#1688a4;border-radius:20px}
+.final-strengths{display:grid;gap:6px;font-size:11px;color:#506d7f;padding-top:11px;border-top:1px solid #e3edf2}
+.final-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.final-info{background:#f0f6f9;border:1px solid #e5eef3;border-radius:10px;padding:11px;min-width:0}
+.final-info span{font-size:11px;line-height:1.35;color:#507083;display:block}
+.final-info strong{font-size:clamp(13px,1.8vw,17px);display:block;margin-top:6px;color:#153d56;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.final-season-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:14px}
+.final-groups{margin-top:16px;border-top:1px solid #e4edf2;padding-top:14px}
+.final-groups summary{cursor:pointer;color:#16688d;font-size:13px;font-weight:750}
+.final-group-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 19px;padding-top:16px}
+.final-restricted{font-size:12px;color:#718596;background:#f5f8fa;border-radius:9px;padding:13px}
+.final-awards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.final-award{display:flex;flex-direction:column;gap:7px;border-radius:13px;padding:17px 14px;border:1px solid #dce8ee;background:#fff}
+.final-award-label{font-size:11px;color:#648091;font-weight:700}
+.final-award strong{font-size:15px;overflow-wrap:anywhere}
+.final-award-value{font-size:20px;font-weight:900;color:#0a7695;overflow-wrap:anywhere}
+.final-award small{font-size:11px;color:#677f8c;line-height:1.4}
+.final-rule{font-size:12px;color:#557081;line-height:1.55;margin:20px 0}
+.final-actions{display:flex;gap:10px;flex-wrap:wrap;max-width:1210px;margin:19px auto 10px}
+.final-actions .btn{min-width:190px}
+@media(max-width:880px){.final-awards{grid-template-columns:repeat(2,minmax(0,1fr))}.final-team-content{grid-template-columns:1fr}}
+@media(max-width:600px){.final-hero{padding:22px 19px}.final-podium{gap:7px}.final-podium-card{padding:14px 7px}.final-podium-card--first{padding:20px 7px}.final-medal{font-size:26px}.final-podium-card h3{font-size:13px}.final-podium-number{font-size:29px}.final-podium-number span{font-size:11px}.final-podium-bottom{font-size:9px}.final-team{padding:18px 15px}.final-team h3{font-size:19px}.final-team-score{font-size:30px}.final-facts,.final-group-grid,.final-season-pair{grid-template-columns:1fr}.final-awards{grid-template-columns:1fr 1fr}.final-award-value{font-size:17px}.final-actions .btn{width:100%}}
+
 </style></head><body>
 <header><div><h1>AlpenManager</h1><small>Planspiel · Anspruchsgruppen im St. Galler Managementmodell</small></div><span id="headState" class="pill">Demo-Version</span></header>
 <main><div id="app"></div></main>
@@ -399,6 +458,142 @@ function score(t){
  const total=Math.round(economy*.4+stakeholder*.4+future*.2);
  return {economy,stakeholder,future,total,solvent};
 }
-function showFinal(){mode="final";renderHeader();const ranks=game.teams.map(t=>({t,score:score(t)})).sort((a,b)=>(b.score.solvent?1:0)-(a.score.solvent?1:0)||b.score.total-a.score.total);$("#app").innerHTML='<section class="panel stack"><h2>🏆 Finale – fünf Saisons sind gespielt</h2><p>40 % wirtschaftlicher Erfolg · 40 % Anspruchsgruppen · 20 % Zukunftsfähigkeit. Zahlungsunfähige Skigebiete behalten ihre erreichten Punkte, sind aber nicht gewinnberechtigt. Bei Ausschöpfung der Kreditlimite endet der Spielbetrieb.</p>'+ranks.map((x,i)=>'<div class="panel"><div class="line"><h3>'+(i+1)+'. '+x.t.name+'</h3><span class="score">'+x.score.total+'/100</span></div><p>Wirtschaft '+round(x.score.economy)+'/100 · Anspruchsgruppen '+round(x.score.stakeholder)+'/100 · Zukunft '+round(x.score.future)+'/100</p><p class="hint">'+(x.score.solvent?"Gewinnberechtigt":"Nicht gewinnberechtigt: Zahlungsunfähigkeit")+' · '+money(x.t.state.totalProfit)+' kumulierter Saisongewinn</p></div>').join("")+'<h3>Reflexion</h3><p>Welche Anspruchsgruppen haben Sie besonders berücksichtigt? Welche Interessen standen im Widerspruch? Welche Entscheidungen waren kurzfristig attraktiv, hatten aber langfristig Nachteile? Haben Sie Ihre ursprüngliche Positionierung eingehalten?</p><button class="btn" id="reset">Neues Spiel</button></section>';$("#reset").onclick=()=>{sessionStorage.removeItem("alpenmanager_demo");game=null;ends=0;startView()}}
+
+function finalEscape(value){
+ return String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function finalDashboardHtml(entries,options){
+ options=options||{};
+ const fMoney=n=>Number.isFinite(Number(n))?"CHF "+Math.round(Number(n)).toLocaleString("de-CH"):"–";
+ const fNum=n=>Number.isFinite(Number(n))?Math.round(Number(n)).toLocaleString("de-CH"):"–";
+ const percentage=n=>Math.max(0,Math.min(100,Number(n)||0));
+ const safeName=n=>finalEscape(n||"Skigebiet");
+ const stats=entries.map((entry,index)=>{
+   const state=entry.state&&Array.isArray(entry.state.stake)?entry.state:null;
+   const rating=state?score({state}):null;
+   const summary=entry.summary||{};
+   const history=state&&Array.isArray(state.history)?state.history:[];
+   const sum=(field)=>history.reduce((acc,row)=>acc+(Number(row[field])||0),0);
+   const guests=history.length?sum("guests"):null;
+   const weighted=history.reduce((acc,row)=>acc+(Number(row.guests)||0)*(Number(row.price)||0),0);
+   const avgPrice=guests>0?weighted/guests:history.length?sum("price")/history.length:null;
+   const byProfit=history.map((row,i)=>({season:Number(row.season)||i+1,profit:Number(row.profit)||0}));
+   const strongest=state?state.stake.map((value,i)=>({value:Number(value)||0,label:GROUPS[i]})).sort((a,b)=>b.value-a.value)[0]:null;
+   const weakest=state?state.stake.map((value,i)=>({value:Number(value)||0,label:GROUPS[i]})).sort((a,b)=>a.value-b.value)[0]:null;
+   const solv=rating?rating.solvent:summary.solvent!==undefined?!!summary.solvent:null;
+   const total=rating?rating.total:Number.isFinite(Number(summary.score))?Number(summary.score):null;
+   return {
+     name:entry.name||"Skigebiet "+(index+1),slot:entry.slot||index+1,state,history,rating,
+     solvent:solv,total,profit:state?Number(state.totalProfit)||0:null,
+     cash:state?Number(state.cash)||0:Number.isFinite(Number(summary.cash))?Number(summary.cash):null,
+     guests,avgPrice,
+     staff:!options.publicView&&state?state.staff:null,
+     strongest,weakest,
+     best:byProfit.length?byProfit.slice().sort((a,b)=>b.profit-a.profit)[0]:null,
+     worst:byProfit.length?byProfit.slice().sort((a,b)=>a.profit-b.profit)[0]:null,
+     investments:state?Object.values(state.assets||{}).filter(Boolean).length:null
+   };
+ });
+ stats.sort((a,b)=>Number(b.solvent===true)-Number(a.solvent===true)||
+   (b.total??-1)-(a.total??-1)||
+   (a.profit!=null&&b.profit!=null?b.profit-a.profit:0)||
+   a.slot-b.slot);
+ const ranked=stats.map((s,i)=>{
+   const prev=stats[i-1],same=prev&&prev.total===s.total&&prev.solvent===s.solvent;
+   const preciseTie=same&&(prev.profit==null||s.profit==null||prev.profit===s.profit);
+   return {...s,rank:i+1};
+ });
+ // An equal score is split by cumulative profit only when both are available.
+ function rankNumber(i){let j=i;while(j>0&&stats[j].total===stats[j-1].total&&stats[j].solvent===stats[j-1].solvent&&
+    (stats[j].profit==null||stats[j-1].profit==null||stats[j].profit===stats[j-1].profit))j--;return j+1;}
+ ranked.forEach((row,i)=>row.rank=rankNumber(i));
+ const eligible=ranked.filter(x=>x.solvent===true);
+ const champ=eligible[0]||null;
+ const complete=ranked.filter(x=>x.state);
+ const eligibleFull=complete.filter(x=>x.solvent===true);
+ const bestOf=(field,filter)=>{const list=eligibleFull.filter(x=>filter?filter(x):x[field]!=null);return list.length?list.slice().sort((a,b)=>b[field]-a[field])[0]:null};
+ const profitBest=bestOf("profit"),guestBest=bestOf("guests"),stakeBest=bestOf("stakeValue",()=>false);
+ const goodwill=eligibleFull.length?eligibleFull.slice().sort((a,b)=>b.rating.stakeholder-a.rating.stakeholder)[0]:null;
+ const futureBest=eligibleFull.length?eligibleFull.slice().sort((a,b)=>b.rating.future-a.rating.future)[0]:null;
+ const years=5;
+ const note=options.publicView?"Öffentliche Spielwerte – vertrauliche Teamentscheidungen bleiben geschützt.":"Vergleich der drei Skigebiete nach fünf Wintersaisons.";
+ const medals=["🥇","🥈","🥉"],podiumOrder=[1,0,2];
+ const podium='<div class="final-podium">'+podiumOrder.map(i=>{
+   const t=ranked[i];if(!t)return "";
+   const label=t.solvent===false?"Nicht gewinnberechtigt":t.solvent===true?"Gewinnberechtigt":"Spielstand";
+   return '<div class="final-podium-card '+(i===0?"final-podium-card--first":"")+'"><div class="final-medal">'+medals[i]+'</div>'+
+    '<div class="final-podium-rank">'+t.rank+'. Platz</div><h3>'+safeName(t.name)+'</h3>'+
+    '<div class="final-podium-number">'+(t.total??"–")+'<span>/100</span></div>'+
+    '<div class="final-podium-bottom">'+label+'</div></div>';
+ }).join("")+'</div>';
+ const award=(title,t,amount,sub)=>'<div class="final-award"><span class="final-award-label">'+title+'</span><strong>'+safeName(t?t.name:"Nicht verfügbar")+'</strong>'+
+  '<span class="final-award-value">'+(t?amount:"–")+'</span><small>'+sub+'</small></div>';
+ const awardPart='<div class="final-awards">'+
+  award("Höchster Saisongewinn gesamt",profitBest,profitBest?fMoney(profitBest.profit):"","Kumulierter Gewinn über fünf Saisons")+
+  award("Meiste Gäste insgesamt",guestBest,guestBest?fNum(guestBest.guests):"","Besuche über alle Saisons")+
+  award("Stärkste Anspruchsgruppen",goodwill,goodwill?Math.round(goodwill.rating.stakeholder)+"/100":"","Bewertung der sieben Anspruchsgruppen")+
+  award("Beste Zukunftsfähigkeit",futureBest,futureBest?Math.round(futureBest.rating.future)+"/100":"","Langfristige Bewertung")+
+ '</div>';
+ const line=(label,val)=>'<div class="final-info"><span>'+label+'</span><strong>'+val+'</strong></div>';
+ const bar=(label,val)=>{
+    const num=Number.isFinite(Number(val))?Math.round(Number(val)):null;
+    return '<div class="final-score-line"><div class="final-score-label"><span>'+label+'</span><strong>'+(num==null?"–":num+'/100')+'</strong></div>'+
+      '<div class="final-score-track"><i style="width:'+percentage(val)+'%"></i></div></div>';
+ };
+ const details=ranked.map((t,i)=>{
+   const s=t.state,r=t.rating;
+   const recognised=champ===t&&t.solvent===true;
+   const awards=[];
+   if(profitBest===t)awards.push("Höchster Gewinn");
+   if(guestBest===t)awards.push("Meiste Gäste");
+   if(goodwill===t)awards.push("Stärkste Anspruchsgruppen");
+   if(futureBest===t)awards.push("Beste Zukunft");
+   const strengths=t.strongest&&t.weakest?
+       '<div class="final-strengths"><span><strong>Stärke:</strong> '+finalEscape(t.strongest.label)+' ('+fNum(t.strongest.value)+')</span>'+
+       '<span><strong>Verbesserungspotenzial:</strong> '+finalEscape(t.weakest.label)+' ('+fNum(t.weakest.value)+')</span></div>':"";
+   const data=[
+     ["Kumulierter Gewinn",t.profit==null?"–":fMoney(t.profit)],
+     ["Schluss-Kontostand",t.cash==null?"–":fMoney(t.cash)],
+     ["Gäste über fünf Saisons",t.guests==null?"–":fNum(t.guests)],
+     ["Ø Skipasspreis, gästegewichtet",t.avgPrice==null?"–":fMoney(t.avgPrice)],
+     ["Mitarbeitende am Schluss",t.staff==null?"–":fNum(t.staff)],
+     ["Gekaufte Investitionen",t.investments==null?"–":fNum(t.investments)]
+   ];
+   const seasons=t.best?'<div class="final-season-pair">'+
+      line("Beste Saison",t.best.season+". Saison · "+fMoney(t.best.profit))+
+      line("Schwächste Saison",t.worst.season+". Saison · "+fMoney(t.worst.profit))+'</div>':"";
+   const groups=s&&Array.isArray(s.stake)?'<details class="final-groups"><summary>Alle sieben Anspruchsgruppen anzeigen</summary><div class="final-group-grid">'+
+     GROUPS.map((g,k)=>bar(finalEscape(g),s.stake[k])).join("")+'</div></details>':
+      '<div class="final-restricted">Weitere Kennzahlen sind nur in der Lehrpersonenansicht verfügbar.</div>';
+   return '<section class="final-team '+(recognised?'final-team--winner':'')+'"><div class="final-team-header"><div>'+
+     '<span class="final-team-rank">'+medals[i]+' '+t.rank+'. Platz'+(recognised?' · Sieger':'')+'</span>'+
+     '<h3>'+safeName(t.name)+'</h3>'+
+     '<span class="final-eligibility '+(t.solvent===false?'final-eligibility--bad':'')+'">'+(t.solvent===false?'Nicht gewinnberechtigt':'Gewinnberechtigt')+'</span>'+
+     '</div><div class="final-team-score">'+(t.total??"–")+'<span>/100 Punkte</span></div></div>'+
+     (awards.length?'<div class="final-team-awards">'+awards.map(x=>'<span>'+x+'</span>').join("")+'</div>':"")+
+     '<div class="final-team-content"><div class="final-team-scores">'+
+        (r?bar("Wirtschaft",r.economy)+bar("Anspruchsgruppen",r.stakeholder)+bar("Zukunftsfähigkeit",r.future):
+          '<p class="final-restricted">Die drei Teilbewertungen sind nur für die Spielleitung sichtbar.</p>')+
+         strengths+
+     '</div><div class="final-facts">'+data.map(d=>line(d[0],d[1])).join("")+'</div></div>'+
+     seasons+groups+'</section>';
+ }).join("");
+ return '<div class="final-dashboard"><section class="final-hero"><div class="final-hero-overline">ALPENMANAGER · SAISONFINALE</div>'+
+   '<h2>🏁 Fünf Saisons. Ein Sieger.</h2><p>'+note+'</p>'+
+   '<div class="final-weights"><span>40 % Wirtschaft</span><span>40 % Anspruchsgruppen</span><span>20 % Zukunft</span></div></section>'+
+   '<h3 class="final-section-title">Das Siegerpodest</h3>'+podium+
+   '<h3 class="final-section-title">Die drei Skigebiete im Detail</h3><div class="final-team-list">'+details+'</div>'+
+   '<h3 class="final-section-title">Bestwerte des Wettbewerbs</h3>'+awardPart+
+   '<p class="final-rule">Nur zahlungsfähige Skigebiete sind gewinnberechtigt. Bei gleicher Gesamtpunktzahl entscheidet der kumulierte Gewinn, sofern er für beide Teams vorliegt. Ohne diese Angaben wird ein Punktgleichstand ausgewiesen.</p></div>';
+}
+
+function showFinal(){
+ mode="final";renderHeader();
+ const entries=game.teams.map((t,i)=>({name:t.name,slot:i+1,state:t.state}));
+ $("#app").innerHTML=finalDashboardHtml(entries)+
+  '<div class="final-actions"><button class="btn" id="reset">Neues Spiel</button><button class="btn alt" id="finalHome">Zur Startseite</button></div>';
+ $("#reset").onclick=()=>{sessionStorage.removeItem("alpenmanager_demo");game=null;ends=0;startView()};
+ $("#finalHome").onclick=()=>{sessionStorage.removeItem("alpenmanager_demo");game=null;ends=0;location.href=location.pathname};
+}
 document.addEventListener("DOMContentLoaded",()=>{try{startView()}catch(err){console.error("AlpenManager start failed",err);const app=document.getElementById("app");if(app)app.innerHTML="<section class=\"panel\"><h2>Startfehler</h2><p>Bitte Seite neu laden. Technische Meldung: "+String(err.message)+"</p></section>";}});
 </script><script src="multiplayer.js?v=20261024teacherpreview"></script></body></html>
