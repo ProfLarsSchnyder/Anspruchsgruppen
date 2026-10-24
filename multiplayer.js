@@ -9,6 +9,7 @@
   const PROJECTOR_KEY = "alpenmanager_beamer_session_v1";
   let session = null, room = null, polling = false, working = false;
   let teacherPin = ""; // Nur im Arbeitsspeicher, nicht dauerhaft speichern.
+  let previewActive = false;
   let lastView = "", lastVersion = -1, reportSlot = 1, message = "", lastFinishAttempt = 0;
   const app = () => document.getElementById("app");
   const get = id => document.getElementById(id);
@@ -64,7 +65,7 @@
   function pageTop(title) {
     const phase=room?phaseNames[room.phase]:"Online";
     const head=get("headState"); if(head)head.textContent=room?"Saison "+room.season+"/5 · "+phase:"Online-Spiel";
-    return '<div class="net-top"><div><h2>'+html(title)+'</h2><span class="net-muted">AlpenManager · Online-Spiel über Supabase</span></div><span class="net-tag">'+html(phase||"Online")+'</span></div>';
+    return '<div class="net-top"><div><h2>'+html(title)+'</h2><span class="net-muted">'+(previewActive?'AlpenManager · Lokale Demo ohne Supabase':'AlpenManager · Online-Spiel über Supabase')+'</span></div><span class="net-tag">'+html(phase||"Online")+'</span></div>';
   }
   function msgBox(){return '<p id="netMessage" class="net-error" role="status">'+html(message)+'</p>';}
   function leaveButton(){return '<button class="btn alt" id="netLeave">Verbindung verlassen</button>';}
@@ -508,6 +509,7 @@
     const marker=get("demoPreviewMarker");if(marker)marker.textContent="VORSCHAU – keine echten Teamdaten";
   }
   function openDemoPreview(role){
+    previewActive=true;
     previewRole=role==="projector"?"projector":"teacher";
     previewSeason=2;
     previewPhase="decision";
