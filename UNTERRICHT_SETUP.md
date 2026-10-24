@@ -2,9 +2,10 @@
 
 ## Einmaliges Supabase-Setup
 1. Supabase-Projekt `xvgbisxwptnfupibcbpg` öffnen und links **SQL Editor → New query** wählen.
-2. **Neue Datenbank:** Den vollständigen Inhalt von `supabase_setup.sql` im SQL Editor ausführen. **Bereits installierte Vierstellercode-Version:** `UPDATE_5_MIN_INAKTIVITAET.sql` vollständig ausführen. Falls das ältere Update noch fehlt, zuerst `UPDATE_4_STELLIG_SUPABASE.sql` ausführen. Die bisherigen Tabellen bleiben erhalten; vorhandene Spiele erhalten zunächst fünf Minuten neue Frist.
-3. Der Publishable Key und die Supabase-Adresse sind bereits in `multiplayer.js` hinterlegt. Niemals geheime API-Schlüssel ins GitHub-Repository einfügen.
-4. Online-Version öffnen: https://proflarsschnyder.github.io/Anspruchsgruppen/
+2. **Cron aktivieren:** Unter **Integrations → Cron** die Erweiterung `pg_cron` im Supabase-Dashboard einschalten. Nicht versuchen, sie über ein eigenes `CREATE EXTENSION` in die Spiel-SQL-Datei einzubauen, da das auf manchen Projekten den Berechtigungsfehler `2BP01` auslösen kann.
+3. **Neue Datenbank:** Den vollständigen Inhalt von `supabase_setup.sql` im SQL Editor ausführen. **Bereits installierte Vierstellercode-Version:** `UPDATE_5_MIN_INAKTIVITAET.sql` vollständig ausführen. Falls das ältere Update noch fehlt, zuerst `UPDATE_4_STELLIG_SUPABASE.sql` ausführen. Die bisherigen Tabellen bleiben erhalten; vorhandene Spiele erhalten zunächst fünf Minuten neue Frist.
+4. Der Publishable Key und die Supabase-Adresse sind bereits in `multiplayer.js` hinterlegt. Niemals geheime API-Schlüssel ins GitHub-Repository einfügen.
+5. Online-Version öffnen: https://proflarsschnyder.github.io/Anspruchsgruppen/
 
 ## Rollen und Start
 - **Lehrpersonen-Dashboard:** Auf der öffentlichen Startseite «Lehrpersonen-Dashboard» wählen und das Lehrpersonen-Passwort **1234** eingeben. Erst nach dieser Anmeldung erscheint **Neue Spielrunde**.
@@ -42,5 +43,5 @@
 - Alle drei Skigebiete sind auf unterschiedlichen Geräten beigetreten.
 - Gleicher Countdown auf allen Geräten, automatische Sperre nach Zeitablauf, aber **keine automatische Auswertung**. Der Lehrerbutton ist erst nach drei gespeicherten Entscheidungen oder nach Ablauf der vier Minuten aktiv.
 - Saisonergebnisse und Schlussrangliste stimmen auf allen Geräten überein.
-- In Supabase unter Integrations → Cron prüfen, ob `alpenmanager-inaktive-spiele` aktiv ist.
+- In Supabase unter Integrations → Cron prüfen, ob `alpenmanager-inaktive-spiele` aktiv ist. Falls Cron erst nach dem SQL-Update aktiviert wurde, die SQL-Datei nochmals ausführen, um den Job anzulegen. Solange der Job fehlt, funktioniert die Bereinigung bei geschlossenen Browsern noch nicht.
 - Für einen kurzen Funktionstest kann in einem **separaten Testspiel** ein Raum fünf Minuten unbedient bleiben. Anschliessend höchstens eine weitere Minute für den Cron-Lauf einplanen. Nicht mit einer echten Unterrichtspartie testen.
