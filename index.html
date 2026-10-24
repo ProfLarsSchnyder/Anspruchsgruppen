@@ -11,9 +11,110 @@
 .event-content h2{font-size:clamp(35px,5vw,72px);line-height:1.06;margin:14px 0 22px;text-shadow:0 3px 18px #0009}
 .event-content p{font-size:clamp(17px,2vw,24px);line-height:1.5;max-width:800px;margin-bottom:26px}
 .event-content .btn{font-size:17px;padding:15px 25px}
+
+/* AlpenManager: einheitliche Startseite und Lehrpersonenbereich. */
+/* Nur .am-entry betroffen: Spielsimulation, Berichte und Beamer bleiben unverändert. */
+body:has(.am-entry){background:#f2f7fa}
+main:has(.am-entry){max-width:1110px;padding-top:20px}
+.am-entry{width:100%;max-width:1060px;margin:0 auto;color:#19354a}
+.am-entry .am-welcome{
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:225px;margin:0 0 18px;padding:30px 36px;
+  display:flex;align-items:center;
+  background:linear-gradient(100deg,rgba(6,31,52,.96) 0%,rgba(8,45,68,.89) 48%,rgba(8,40,60,.27) 100%),
+    url('https://images.unsplash.com/photo-1517299321609-52687d1bc55a?auto=format&fit=crop&w=1600&q=85') center 52%/cover;
+  color:#fff;border-radius:19px;box-shadow:0 12px 30px rgba(22,58,85,.11)
+}
+.am-entry .am-welcome-inner{position:relative;z-index:1;max-width:770px}
+.am-entry .am-eyebrow{font-size:11px;letter-spacing:.14em;font-weight:800;color:#b9e0f1;margin-bottom:12px}
+.am-entry .am-welcome h2{font-size:clamp(27px,3.6vw,39px);line-height:1.13;letter-spacing:-.028em;font-weight:800;margin:0 0 11px;color:#fff}
+.am-entry .am-welcome p{font-size:14px;max-width:640px;line-height:1.55;color:#e0edf4;margin:0}
+.am-entry .am-facts{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:21px}
+.am-entry .am-facts span{display:inline-flex;align-items:center;gap:6px;border-radius:50px;border:1px solid rgba(235,247,255,.26);padding:7px 11px;background:rgba(255,255,255,.10);font-size:12px;color:#e9f6fc}
+.am-entry .am-facts strong{font-size:14px;color:white}
+.am-entry .am-card-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch;gap:18px}
+.am-entry .am-card{
+ display:flex;flex-direction:column;min-width:0;
+ padding:25px 26px 20px;background:#fff;
+ border:1px solid #dce8ee;border-radius:17px;
+ box-shadow:0 6px 25px rgba(33,70,97,.055)
+}
+.am-entry .am-card--primary{border-top:3px solid #137aab}
+.am-entry .am-card--secondary{border-top:3px solid #365e79}
+.am-entry .am-card-head{display:flex;gap:14px;align-items:center;margin-bottom:10px}
+.am-entry .am-card-symbol{
+ display:flex;flex-shrink:0;align-items:center;justify-content:center;
+ width:44px;height:44px;border-radius:13px;background:#e6f3f9;
+ color:#16749c;font-size:15px;font-weight:850;font-variant-numeric:tabular-nums
+}
+.am-entry .am-card--secondary .am-card-symbol{background:#edf1f6;color:#365e79}
+.am-entry .am-card-overline{font-size:10px;line-height:1.4;letter-spacing:.12em;font-weight:800;color:#5f7c8d;margin:0 0 4px}
+.am-entry .am-card h3{font-size:21px;line-height:1.2;letter-spacing:-.015em;margin:0}
+.am-entry .am-card-intro{color:#506a7a;font-size:13px;line-height:1.55;margin:0 0 8px;max-width:450px}
+.am-entry .am-form-group{margin-top:13px}
+.am-entry .am-form-group label{display:block;font-size:12px;font-weight:750;color:#25465c;margin:0 0 7px}
+.am-entry .am-card .net-input{
+ display:block;width:100%;min-width:0;min-height:44px;margin:0;
+ border:1px solid #c9dce6;border-radius:9px;background:#fff;
+ padding:10px 13px;font-size:14px;color:#163d56;transition:border-color .16s,box-shadow .16s;
+}
+.am-entry .am-card .net-input:hover{border-color:#9fbfce}
+.am-entry .am-card .net-input:focus{border-color:#147bac;outline:none;box-shadow:0 0 0 3px rgba(20,123,172,.13)}
+.am-entry .am-input-code{text-transform:uppercase;letter-spacing:.065em;font-variant-numeric:tabular-nums}
+.am-entry .am-submit{
+ width:100%;min-height:47px;display:flex;align-items:center;justify-content:space-between;
+ margin-top:19px;padding:11px 17px;background:#137cae;color:white;font-size:14px;
+ border-radius:10px;transition:background .16s,transform .16s,box-shadow .16s;
+}
+.am-entry .am-submit:hover:not(:disabled){background:#0a6795;transform:translateY(-1px);box-shadow:0 6px 14px rgba(19,124,174,.14)}
+.am-entry .am-card--secondary .am-submit{background:#174765;color:#fff}
+.am-entry .am-card--secondary .am-submit:hover:not(:disabled){background:#0d334e}
+.am-entry .am-submit span{font-size:20px;font-weight:500;line-height:1}
+.am-entry .am-footnote{font-size:11px;line-height:1.5;color:#6e8390;margin:12px 0 0}
+.am-entry .am-teacher-hint{
+ display:flex;flex-direction:column;gap:8px;margin-top:18px;
+ padding:16px 18px;background:#f2f7fa;border:1px solid #e2ecf2;border-radius:11px;
+ font-size:12px;color:#4c6a7c
+}
+.am-entry .am-teacher-hint strong{color:#28485a;font-size:12px;margin-bottom:1px}
+.am-entry .am-teacher-hint span::before{content:"✓";color:#168174;font-weight:800;margin-right:9px}
+.am-entry .am-tools{
+ display:flex;align-items:center;justify-content:space-between;gap:16px;
+ margin-top:18px;padding:17px 20px;background:#fff;
+ border:1px solid #dce8ee;border-radius:14px
+}
+.am-entry .am-tools strong{font-size:14px}
+.am-entry .am-tools p{font-size:12px;color:#5a7383;margin:4px 0 0;line-height:1.5}
+.am-entry .am-tools button{flex-shrink:0}
+.am-entry .am-back{margin-top:14px}
+.am-entry .am-back .btn{font-size:12px;padding:10px 14px}
+.am-entry .net-error{margin-top:12px;min-height:0}
+.am-entry button:focus-visible{outline:3px solid #69b3dc;outline-offset:3px}
+@media(max-width:780px){
+ .am-entry .am-card-grid{grid-template-columns:1fr}
+ .am-entry .am-welcome{min-height:210px;padding:28px}
+ .am-entry .am-card{padding:23px}
+ .am-entry .am-card--secondary .am-teacher-hint{margin-top:20px}
+}
+@media(max-width:520px){
+ main:has(.am-entry){padding-top:11px}
+ .am-entry .am-welcome{min-height:0;padding:25px 22px;border-radius:14px;margin-bottom:13px}
+ .am-entry .am-welcome h2{font-size:28px}
+ .am-entry .am-welcome h2 br{display:none}
+ .am-entry .am-welcome p{font-size:13px}
+ .am-entry .am-facts{gap:6px;margin-top:17px}
+ .am-entry .am-facts span{font-size:11px;padding:6px 9px}
+ .am-entry .am-card-grid{gap:13px}
+ .am-entry .am-card{border-radius:13px;padding:19px}
+ .am-entry .am-card h3{font-size:19px}
+ .am-entry .am-tools{flex-direction:column;align-items:stretch;padding:16px}
+ .am-entry .am-tools button{width:100%}
+}
+@media(prefers-reduced-motion:reduce){.am-entry .am-submit,.am-entry .am-card .net-input{transition:none}.am-entry .am-submit:hover:not(:disabled){transform:none}}
+
 </style></head><body>
 <header><div><h1>AlpenManager</h1><small>Planspiel · Anspruchsgruppen im St. Galler Managementmodell</small></div><span id="headState" class="pill">Demo-Version</span></header>
-<main><div class="hero"><h2>Führen. Entscheiden. Verantwortung übernehmen.</h2><p>Leiten Sie Ihr eigenes Skigebiet durch fünf Wintersaisons. Ihre Entscheidungen beeinflussen Gäste, Finanzen und sieben Anspruchsgruppen – manchmal erst Jahre später.</p></div><div id="app"></div></main>
+<main><div id="app"></div></main>
 <script>
 "use strict";
 const GROUPS=["Kunden","Mitarbeitende","Kapitalgeber","Lieferanten","Staat","Öffentlichkeit / Institutionen","Konkurrenz"];
@@ -244,4 +345,4 @@ function score(t){
 }
 function showFinal(){mode="final";renderHeader();const ranks=game.teams.map(t=>({t,score:score(t)})).sort((a,b)=>(b.score.solvent?1:0)-(a.score.solvent?1:0)||b.score.total-a.score.total);$("#app").innerHTML='<section class="panel stack"><h2>🏆 Finale – fünf Saisons sind gespielt</h2><p>40 % wirtschaftlicher Erfolg · 40 % Anspruchsgruppen · 20 % Zukunftsfähigkeit. Zahlungsunfähige Skigebiete behalten ihre erreichten Punkte, sind aber nicht gewinnberechtigt. Bei Ausschöpfung der Kreditlimite endet der Spielbetrieb.</p>'+ranks.map((x,i)=>'<div class="panel"><div class="line"><h3>'+(i+1)+'. '+x.t.name+'</h3><span class="score">'+x.score.total+'/100</span></div><p>Wirtschaft '+round(x.score.economy)+'/100 · Anspruchsgruppen '+round(x.score.stakeholder)+'/100 · Zukunft '+round(x.score.future)+'/100</p><p class="hint">'+(x.score.solvent?"Gewinnberechtigt":"Nicht gewinnberechtigt: Zahlungsunfähigkeit")+' · '+money(x.t.state.totalProfit)+' kumulierter Saisongewinn</p></div>').join("")+'<h3>Reflexion</h3><p>Welche Anspruchsgruppen haben Sie besonders berücksichtigt? Welche Interessen standen im Widerspruch? Welche Entscheidungen waren kurzfristig attraktiv, hatten aber langfristig Nachteile? Haben Sie Ihre ursprüngliche Positionierung eingehalten?</p><button class="btn" id="reset">Neues Spiel</button></section>';$("#reset").onclick=()=>{sessionStorage.removeItem("alpenmanager_demo");game=null;ends=0;startView()}}
 document.addEventListener("DOMContentLoaded",()=>{try{startView()}catch(err){console.error("AlpenManager start failed",err);const app=document.getElementById("app");if(app)app.innerHTML="<section class=\"panel\"><h2>Startfehler</h2><p>Bitte Seite neu laden. Technische Meldung: "+String(err.message)+"</p></section>";}});
-</script><script src="multiplayer.js?v=20261022teacher"></script></body></html>
+</script><script src="multiplayer.js?v=20261024home"></script></body></html>
