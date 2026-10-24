@@ -7,7 +7,7 @@
   const KEY = "sb_publishable_WF742ZbvUE8BzCTT2MZw2w_K2wFvYyt";
   const STORAGE_KEY = "alpenmanager_online_session_v1";
   const PROJECTOR_KEY = "alpenmanager_beamer_session_v1";
-  let session = null, room = null, polling = false, working = false;
+  let session = null, room = null, polling = false, working = false, refreshPending = false;
   let teacherPin = ""; // Nur im Arbeitsspeicher, nicht dauerhaft speichern.
   let previewActive = false;
   let lastView = "", lastVersion = -1, reportSlot = 1, message = "", lastFinishAttempt = 0;
@@ -107,7 +107,7 @@
     room=null;lastView="home";lastVersion=-1;
     const head=get("headState");if(head)head.textContent="Startseite";
     let preset="";try{preset=new URLSearchParams(location.search).get("code")||"";}catch{}
-    const code=/^[A-F0-9]{6}$/.test(preset)?preset:"";
+    const code=/^[0-9]{4}$/.test(preset)?preset:"";
     app().innerHTML='<div class="am-entry am-entry--home">'+
       '<section class="am-welcome"><div class="am-welcome-inner">'+
       '<div class="am-eyebrow">PLANSPIEL · ANSPRUCHSGRUPPEN</div>'+
@@ -117,10 +117,9 @@
       '</div></section>'+
       '<div class="am-card-grid">'+
       '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">FÜR LERNENDE</p><h3>Spiel beitreten</h3></div></div>'+
-      '<p class="am-card-intro">Ihre Lehrperson gibt Ihnen einen Spielcode. Wählen Sie anschliessend ein Skigebiet und starten Sie mit Ihrem Team.</p>'+
-      '<div class="am-form-group"><label for="netCode">Spielcode</label><input class="net-input am-input-code" id="netCode" maxlength="6" placeholder="z. B. A1B2C3" autocomplete="off" autocapitalize="characters" value="'+html(code)+'"></div>'+
+      '<p class="am-card-intro">Ihre Lehrperson gibt Ihnen einen vierstelligen Spielcode. Ihr Skigebiet wird beim Beitritt automatisch zugeteilt.</p>'+
+      '<div class="am-form-group"><label for="netCode">Spielcode</label><input class="net-input am-input-code" id="netCode" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="z. B. 4821" autocomplete="off" value="'+html(code)+'"></div>'+
       '<div class="am-form-group"><label for="netName">Name Ihres Skigebiets</label><input class="net-input" id="netName" maxlength="36" placeholder="z. B. Bergblick" autocomplete="off"></div>'+
-      '<div class="am-form-group"><label for="netSlot">Skigebiet auswählen</label><select class="net-input" id="netSlot"><option value="1">Skigebiet 1</option><option value="2">Skigebiet 2</option><option value="3">Skigebiet 3</option></select></div>'+
       '<button class="btn am-submit" id="netJoin">Spiel beitreten <span aria-hidden="true">→</span></button>'+
       '<p class="am-footnote">Kein Passwort nötig. Pro Team wird ein Gerät verwendet.</p></section>'+
       '<section class="am-card am-card--secondary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">02</span><div><p class="am-card-overline">FÜR LEHRPERSONEN</p><h3>Lehrpersonen-Dashboard</h3></div></div>'+
@@ -132,10 +131,10 @@
     get("netJoin").onclick=async()=>{
       try{
         status("Team wird angemeldet …");
-        const code=get("netCode").value.trim().toUpperCase(),name=get("netName").value.trim(),slot=+get("netSlot").value;
-        if(!/^[A-F0-9]{6}$/.test(code))throw Error("Der Spielcode besteht aus sechs Zeichen (A–F, 0–9).");
+        const code=get("netCode").value.trim(),name=get("netName").value.trim();
+        if(!/^[0-9]{4}$/.test(code))throw Error("Bitte den vierstelligen Zahlencode eingeben.");
         if(name.length<2)throw Error("Bitte einen Namen für das Skigebiet eingeben.");
-        const x=await rpc("am_join_room",{p_code:code,p_slot:slot,p_name:name});
+        const x=await rpc("am_join_room",{p_code:code,p_name:name});
         saveSession({code:x.code,token:x.token,role:"team",slot:x.slot});
         await refresh(true);
       }catch(e){status(e.message,true)}
@@ -163,7 +162,7 @@
   }
   function lobby(){
     const count=room.teams.length;
-    app().innerHTML=commonHeader()+'<div class="net-columns"><section class="panel"><h3>Angemeldete Skigebiete ('+count+'/3)</h3>'+namesAndReady()+(count<3?'<p class="net-note">Die Lernenden treten über ihren Browser mit dem Spielcode bei und wählen ein noch freies Skigebiet.</p>':'')+'</section>'+
+    app().innerHTML=commonHeader()+'<div class="net-columns"><section class="panel"><h3>Angemeldete Skigebiete ('+count+'/3)</h3>'+namesAndReady()+(count<3?'<p class="net-note">Die Lernenden treten mit dem vierstelligen Spielcode bei. Die Skigebiete werden automatisch zugeteilt.</p>':'')+'</section>'+
       '<section class="panel"><h3>'+(isHost()?"Spiel vorbereiten":"Warten auf den Start")+'</h3><p>'+(isHost()?"Sobald alle drei Skigebiete beigetreten sind, können Sie das gemeinsame Saisonereignis anzeigen.":"Die Lehrperson startet die Runde, sobald alle drei Teams bereit sind.")+'</p>'+
       (isHost()?'<button class="btn net-action" id="netStart" '+(count!==3?'disabled':'')+'>Spiel starten</button>':'')+'</section></div>'+msgBox();
     bindLeave();
@@ -229,7 +228,7 @@
   function hostDecisions(){
     app().innerHTML=commonHeader()+'<div class="net-top"><h2>Gemeinsame Strategiephase</h2><div class="net-timer" id="netTime">'+formatTimer()+'</div></div>'+
       '<div class="net-columns"><section class="panel"><h3 id="netCount">0 / 3 Teams</h3><div id="netReady">'+namesAndReady()+'</div><p class="net-note">Der Countdown läuft auf dem Server für alle gleichzeitig. Nach Zeitablauf werden weitere Eingaben abgewiesen.</p><button class="btn" id="netFinish">Saison auswerten</button><p class="net-muted">Vorzeitig möglich, wenn alle Teams ihre Entscheidungen eingereicht haben. Sonst nach Ablauf der vier Minuten.</p></section>'+
-      '<section class="panel"><h3>Spielleitung</h3><p>Die Lernenden sehen nur ihre eigenen Entscheidungen. Sobald die Saison beendet ist, werden alle drei Skigebiete zusammen berechnet und die Resultate veröffentlicht.</p><p class="net-muted">Dieses Lehrpersonen-Gerät muss für die automatische Berechnung geöffnet bleiben. Ist es geschlossen, wird die Saison nach Rückkehr berechnet.</p></section></div>'+msgBox();
+      '<section class="panel"><h3>Spielleitung</h3><p>Die Lernenden sehen nur ihre eigenen Entscheidungen. Sobald die Saison beendet ist, werden alle drei Skigebiete zusammen berechnet und die Resultate veröffentlicht.</p><p class="net-muted">Die Lehrperson löst die Auswertung selbst aus, sobald alle drei Teams eingereicht haben oder vier Minuten vergangen sind.</p></section></div>'+msgBox();
     bindLeave();get("netFinish").onclick=finishSeason;updateReady();
   }
   function scoreboard(){
@@ -345,7 +344,7 @@
       hint="Alle Teams sehen dasselbe Saisonereignis.";
     }else if(phase==="decision"){
       action='<button class="btn" id="netFinish" '+(ready!==3&&secondsLeft()>0?'disabled':'')+'>Saison auswerten →</button>';
-      hint="Vor Ablauf des Timers nur möglich, wenn alle drei Teams eingereicht haben.";
+      hint=ready===3?"Alle Entscheidungen gespeichert. Sie können die Saison jetzt auswerten.":secondsLeft()<=0?"Vier Minuten abgelaufen. Sie können die Saison auswerten.":"Auswertung möglich, sobald alle Teams gespeichert haben, sonst nach vier Minuten.";
     }else if(phase==="report"){
       action='<button class="btn" id="netNext">'+(room.season===5?"Schlussrangliste anzeigen":"Nächste Saison vorbereiten")+' →</button>';
       hint="Besprechen Sie die Ergebnisse und starten Sie anschliessend die nächste Saison.";
@@ -368,7 +367,7 @@
     body+='<div class="net-flex" style="margin-bottom:14px"><span class="net-tag">'+(previewActive?"Lokale Vorschau":host?"Live · Lehrersteuerung und Beamer in einem":"Live · nur Anzeige · keine Spielsteuerung")+'</span><div class="net-flex"><button class="btn alt" id="netFull">Vollbild</button>'+leaveButton()+'</div></div>';
     if(host)body+=hostDashboardControls();
     if(phase==="lobby"){
-      body+='<div class="panel"><h3>Teams beitreten lassen</h3><p>Spielcode auf der Startseite eingeben und eines der drei Skigebiete wählen. Die Spielleitung startet nach dem Beitritt aller Gruppen.</p>'+projectorTeams()+'</div>';
+      body+='<div class="panel"><h3>Teams beitreten lassen</h3><p>Vierstelligen Spielcode auf der Startseite eingeben. Die drei Skigebiete werden automatisch und eindeutig zugeteilt.</p>'+projectorTeams()+'</div>';
     }else if(phase==="intro"){
       const e=EVENTS[room.season-1],photo=EVENT_IMAGES[room.season-1];
       body+='<div class="event-screen" style="min-height:480px"><div class="event-photo" style="background-image:url(&quot;'+encodeURI(photo)+'&quot;)"></div><div class="event-shade"></div><div class="event-content"><div class="kicker">SAISON '+room.season+'/5 · EILMELDUNG</div><h2>'+html(e.title)+'</h2><p>'+html(e.desc)+'</p><p style="margin-top:16px">Die Spielleitung gibt die gemeinsame Strategiephase frei.</p></div></div>';
@@ -408,7 +407,8 @@
     lastView=room.phase;lastVersion=room.version;
   }
   async function refresh(force) {
-    if(!session||polling)return;
+    if(!session)return;
+    if(polling){if(force)refreshPending=true;return;}
     polling=true;
     try{
       const fresh=await (isProjector()?rpc("am_projector_room",{p_code:session.code,p_pin:session.pin}):rpc("am_read_room",{p_code:session.code,p_token:session.token}));
@@ -420,11 +420,13 @@
         if(room.phase==="decision"){refreshTimer();if(!isHost()&&!isProjector()&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";}}
         
       }
-      if(isHost()&&room.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)await finishSeason();
     }catch(e){
       if(/Zugang ungültig|Dashboard-Passwort ungültig/.test(e.message)){clearSession();message="Der gespeicherte Zugang ist nicht mehr gültig.";homepage();}
       else status(e.message,true);
-    }finally{polling=false;}
+    }finally{
+      polling=false;
+      if(refreshPending){refreshPending=false;await refresh(true);}
+    }
   }
   async function control(action){
     if(working)return;working=true;
@@ -500,7 +502,7 @@
       solvent:score({state:t.state}).solvent
     })):[];
     return {
-      code:"DEMO01",title:"AlpenManager – Vorschau",phase:previewPhase,
+      code:"0000",title:"AlpenManager – Vorschau",phase:previewPhase,
       season:previewPhase==="finished"?5:previewPhase==="lobby"?1:previewSeason,
       deadline:previewPhase==="decision"?new Date(Date.now()+240000).toISOString():null,
       version:1,results,teams
@@ -508,7 +510,7 @@
   }
   function renderDemoPreview(){
     installStyle();
-    session={code:"DEMO01",token:"demo-only",role:previewRole==="projector"?"projector":"host"};
+    session={code:"0000",token:"demo-only",role:previewRole==="projector"?"projector":"host"};
     room=previewRoom();reportSlot=1;message="";
     const toolbar=get("demoPreviewToolbar");
     if(toolbar){
@@ -562,7 +564,7 @@
     else{session=stored();}
     if(session&&session.code&&(session.token||(session.role==="projector"&&session.pin))){app().innerHTML='<section class="panel"><h2>Spielverbindung wird wiederhergestellt</h2><p>Verbinde mit Supabase und lade den aktuellen Spielstand …</p><button class="btn alt" id="netLeave">Zur Startseite</button>'+msgBox();bindLeave();refresh(true);}
     else if(!dashboardRequested){clearSession();homepage();}
-    setInterval(()=>{if(!session)return;refreshTimer();if(!isHost()&&!isProjector()&&room?.phase==="decision"&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost()&&room?.phase==="decision"&&secondsLeft()<=0&&!working&&Date.now()-lastFinishAttempt>5000)finishSeason();},500);
+    setInterval(()=>{if(!session)return;refreshTimer();if(!isHost()&&!isProjector()&&room?.phase==="decision"&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost()&&room?.phase==="decision")updateReady();},500);
     setInterval(()=>{if(session&&!polling&&!working)refresh(false);},1900);
   }
   document.addEventListener("DOMContentLoaded",start);
