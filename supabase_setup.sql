@@ -51,7 +51,8 @@ end; $$;
 -- Alte ungeschützte RPC-Signatur unbedingt entfernen!
 drop function if exists public.am_create_room(text);
 
--- 1. Spielrunde erstellen; die Lehrperson erhält einen geheimen Host-Token.
+-- 1. Spielrunde erstellen: vierstelliger Zahlencode, eigener geheimer Host-Token.
+-- Die Zufallszahl wird auf aktive und ältere Spielrunden mit eindeutigen Codes geprüft.
 create or replace function public.am_create_room(p_title text,p_pin text)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -61,36 +62,47 @@ begin
  then raise exception 'Lehrpersonen-Passwort ungültig'; end if;
  if length(trim(coalesce(p_title,''))) > 60 then raise exception 'Titel ist zu lang'; end if;
  v_token := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
- for v_try in 1..12 loop
-  v_code := upper(substr(replace(gen_random_uuid()::text,'-',''),1,6));
+ for v_try in 1..80 loop
+  v_code := lpad((floor(random()*10000)::integer)::text,4,'0');
   insert into am_private.rooms(code,title,host_hash)
    values(v_code,coalesce(nullif(trim(p_title),''),'AlpenManager'),md5(v_token))
    on conflict (code) do nothing returning id into v_id;
   exit when v_id is not null;
  end loop;
- if v_id is null then raise exception 'Spielcode konnte nicht erstellt werden'; end if;
+ if v_id is null then raise exception 'Kein freier Spielcode gefunden. Alte Spielrunden bei Bedarf löschen.'; end if;
  return jsonb_build_object('code',v_code,'token',v_token,'role','host');
 end; $$;
 
--- 2. Lernende wählen eines der drei freien Skigebiete.
-create or replace function public.am_join_room(p_code text,p_slot integer,p_name text)
+-- Alte Join-Signatur entfernen, damit Teams nicht mehr manuell eine Nummer wählen können.
+drop function if exists public.am_join_room(text,integer,text);
+
+-- 2. Der Server weist unter Raumsperre atomar den ersten freien Platz zu.
+-- Gleichzeitig beitretende Teams können deshalb nicht denselben Slot bekommen.
+create or replace function public.am_join_room(p_code text,p_name text)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
-declare v_room am_private.rooms%rowtype; v_token text; v_name text;
+declare v_room am_private.rooms%rowtype; v_token text; v_name text; v_slot integer;
 begin
  v_name:=trim(coalesce(p_name,''));
- if p_slot not between 1 and 3 or length(v_name) not between 2 and 36
- then raise exception 'Bitte Skigebiet und einen Namen (2–36 Zeichen) angeben'; end if;
- select * into v_room from am_private.rooms where code=upper(trim(p_code)) for update;
+ if length(v_name) not between 2 and 36
+ then raise exception 'Bitte einen Namen mit 2 bis 36 Zeichen eingeben'; end if;
+ if coalesce(trim(p_code),'') !~ '^[0-9]{4}$'
+ then raise exception 'Bitte einen vierstelligen Spielcode eingeben'; end if;
+ select * into v_room from am_private.rooms where code=trim(p_code) for update;
  if not found then raise exception 'Spielcode nicht gefunden'; end if;
  if v_room.phase<>'lobby' then raise exception 'Beitritt nur vor Spielbeginn möglich'; end if;
- if exists(select 1 from am_private.teams where room_id=v_room.id and slot=p_slot)
- then raise exception 'Dieses Skigebiet ist bereits besetzt'; end if;
+ select available.slot into v_slot
+ from generate_series(1,3) as available(slot)
+ where not exists(
+   select 1 from am_private.teams t where t.room_id=v_room.id and t.slot=available.slot
+ )
+ order by available.slot limit 1;
+ if v_slot is null then raise exception 'Alle drei Skigebiete sind bereits vergeben'; end if;
  v_token:=replace(gen_random_uuid()::text,'-','')||replace(gen_random_uuid()::text,'-','');
  insert into am_private.teams(room_id,slot,name,access_hash)
- values(v_room.id,p_slot,v_name,md5(v_token));
+ values(v_room.id,v_slot,v_name,md5(v_token));
  update am_private.rooms set version=version+1 where id=v_room.id;
- return jsonb_build_object('code',v_room.code,'token',v_token,'role','team','slot',p_slot);
+ return jsonb_build_object('code',v_room.code,'token',v_token,'role','team','slot',v_slot);
 end; $$;
 
 -- 3. Sichere Statusabfrage: Lehrperson sieht alles, Teams nur ihre eigenen Daten.
@@ -196,7 +208,7 @@ begin
 end; $$;
 
 -- 6. Saison atomar abschliessen: nur die Lehrperson veröffentlicht alle drei Resultate.
--- Die Berechnung erfolgt unverändert im AlpenManager-JavaScript der Lehrperson.
+-- Auswertung nur nach ausdrücklicher Freigabe, ab drei gespeicherten Entscheidungen oder Fristende.
 create or replace function public.am_publish_results(p_code text,p_token text,p_states jsonb)
 returns jsonb language plpgsql security definer set search_path = ''
 as $$
@@ -207,6 +219,12 @@ begin
  if not found or md5(coalesce(p_token,''))<>v_room.host_hash
  then raise exception 'Nur die Spielleitung darf Resultate veröffentlichen'; end if;
  if v_room.phase<>'decision' then raise exception 'Die Saison wurde bereits beendet oder noch nicht gestartet'; end if;
+ if now()<v_room.deadline and
+   (select count(*) from am_private.teams where room_id=v_room.id and ready)=0
+ then raise exception 'Es wurden noch keine Entscheidungen gespeichert'; end if;
+ if now()<v_room.deadline and
+   (select count(*) from am_private.teams where room_id=v_room.id and ready)<>3
+ then raise exception 'Vor Ablauf der vier Minuten müssen alle drei Teams gespeichert haben'; end if;
  if jsonb_typeof(p_states)<>'array' or jsonb_array_length(p_states)<>3
  then raise exception 'Es werden drei Teamresultate benötigt'; end if;
  if (select count(*) from am_private.teams where room_id=v_room.id)<>3
@@ -267,14 +285,14 @@ end; $$;
 -- API-Rechte: niemals private Tabellen freigeben!
 revoke all on function public.am_verify_teacher(text) from public,anon,authenticated;
 revoke all on function public.am_create_room(text,text) from public,anon,authenticated;
-revoke all on function public.am_join_room(text,integer,text) from public,anon,authenticated;
+revoke all on function public.am_join_room(text,text) from public,anon,authenticated;
 revoke all on function public.am_read_room(text,text) from public,anon,authenticated;
 revoke all on function public.am_save_choice(text,text,jsonb) from public,anon,authenticated;
 revoke all on function public.am_control(text,text,text) from public,anon,authenticated;
 revoke all on function public.am_publish_results(text,text,jsonb) from public,anon,authenticated;
 grant execute on function public.am_verify_teacher(text) to anon,authenticated;
 grant execute on function public.am_create_room(text,text) to anon,authenticated;
-grant execute on function public.am_join_room(text,integer,text) to anon,authenticated;
+grant execute on function public.am_join_room(text,text) to anon,authenticated;
 grant execute on function public.am_read_room(text,text) to anon,authenticated;
 grant execute on function public.am_save_choice(text,text,jsonb) to anon,authenticated;
 grant execute on function public.am_control(text,text,text) to anon,authenticated;
