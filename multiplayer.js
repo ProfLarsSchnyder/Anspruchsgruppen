@@ -50,7 +50,7 @@
     let data; try { data=raw?JSON.parse(raw):null; } catch { data=null; }
     if (!response.ok) {
       if (response.status===404 || (data && data.code==="PGRST202"))
-        throw new Error("Datenbank noch nicht eingerichtet: Bitte einmal supabase_setup.sql im Supabase SQL Editor ausführen.");
+        throw new Error("Supabase-Funktionen fehlen oder sind veraltet. Bitte UPDATE_4_STELLIG_SUPABASE.sql im Supabase SQL Editor ausführen (bei Neuinstallation: supabase_setup.sql).");
       throw new Error((data && (data.message || data.error_description)) || "Supabase-Fehler ("+response.status+")");
     }
     return data;
