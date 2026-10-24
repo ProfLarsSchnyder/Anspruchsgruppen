@@ -208,6 +208,7 @@
     return '<div class="net-columns"><div class="stack"><section class="panel"><h3>Geschäftsentscheidungen</h3>'+
       field("price","Tageskartenpreis",40,100,5,d.price,"CHF ")+
       field("staff","Mitarbeitende",35,100,5,d.staff,"")+
+      '<p class="hint">Personalkosten je Saison: bis 55 Mitarbeitende je CHF 62\'000, weitere Mitarbeitende je CHF 40\'000. Der Nutzen bleibt unverändert.</p>'+
       field("wage","Lohnänderung gegenüber Basislohn",-20,20,1,d.wage,"","+ %")+
       field("marketing","Marketingbudget",0,300000,25000,d.marketing,"CHF ")+
       field("maintenance","Wartungsbudget",50000,350000,25000,d.maintenance,"CHF ")+
