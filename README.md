@@ -1,28 +1,35 @@
 # AlpenManager – Anspruchsgruppen
 
-Online-Planspiel für Wirtschaft und Recht: Drei Skigebiete konkurrieren während fünf Wintersaisons. Die Spielleitung steuert alle Phasen, die Lernenden treffen ihre Entscheidungen auf separaten Geräten.
+Online-Planspiel für Wirtschaft und Recht: Wahlweise drei oder fünf Skigebiete konkurrieren während fünf Wintersaisons. Die Spielleitung steuert alle Phasen, die Lernenden treffen ihre Entscheidungen auf separaten Geräten.
 
 ## Online spielen
 
 https://proflarsschnyder.github.io/Anspruchsgruppen/
 
-1. Lehrperson meldet sich mit dem Unterrichts-Passwort **1234** an und erstellt eine Spielrunde.
+1. Lehrperson meldet sich mit dem Unterrichts-Passwort **1234** an und wählt beim Erstellen **3 oder 5 Skigebiete**.
 2. Im kombinierten Lehrer-/Beamer-Dashboard erscheint ein **vierstelliger Zahlencode**.
-3. Drei Teams geben Code und Skigebietsname ein. Die Zuteilung zu Skigebiet 1, 2 und 3 erfolgt **automatisch**.
+3. Drei bzw. fünf Teams geben Spielcode und Skigebietsname ein. Die Plätze 1 bis 3 beziehungsweise 1 bis 5 werden **automatisch** vergeben.
 4. Die Lehrperson startet das Spiel und gibt die Strategiephase frei: **6 Minuten in Saison 1, 3 Minuten in den Saisons 2 bis 5**.
-5. Teams speichern ihre Entscheidungen. Die Lehrperson kann die Saison **manuell** auswerten, sobald alle drei Entscheidungen gespeichert sind oder die jeweilige Strategiezeit abgelaufen ist.
+5. Teams speichern ihre Entscheidungen. Die Lehrperson kann die Saison **manuell** auswerten, sobald alle Entscheidungen gespeichert sind oder die jeweilige Strategiezeit abgelaufen ist.
 6. Saisonbericht, Rangliste und die nächste Saison werden von der Lehrperson freigegeben. Die Schlussrangliste erscheint nach Saison fünf.
 
 ## Supabase einrichten oder aktualisieren
 
 - **Neuinstallation:** Datei [supabase_setup.sql](supabase_setup.sql) vollständig im Supabase SQL Editor ausführen.
-- **Bestehende Installation:** Wenn [UPDATE_SPIELZEITEN_10_MIN.sql](UPDATE_SPIELZEITEN_10_MIN.sql) bereits installiert ist, nur [UPDATE_BALANCING_V2.sql](UPDATE_BALANCING_V2.sql) im SQL Editor ausführen. Andernfalls zuerst das Spielzeiten-/Inaktivitätsupdate, danach Balancing V2 ausführen. Cron bei Bedarf unter **Integrations → Cron** aktivieren. Die älteren Zwischenupdates nicht nachträglich ausführen.
+- **Bestehende Installation:** Zuerst sicherstellen, dass [UPDATE_SPIELZEITEN_10_MIN.sql](UPDATE_SPIELZEITEN_10_MIN.sql) und [UPDATE_BALANCING_V2.sql](UPDATE_BALANCING_V2.sql) installiert sind. Danach **[UPDATE_5_TEAM_MODE.sql](UPDATE_5_TEAM_MODE.sql)** vollständig im SQL Editor ausführen. Nur diese letzte Datei ist für die neue Teamanzahl nötig, wenn die bisherigen Updates bereits vorhanden sind. Bestehende 3er-Runden bleiben erhalten.
 - Der Supabase-Publishable-Key darf öffentlich sein. Geheime Datenbank- oder Service-Role-Keys gehören niemals ins Repository.
 - Alte Spielrunden behalten ihre sechsstelligen Codes. Für einen neuen Unterrichtsdurchlauf nach dem SQL-Update eine **neue Spielrunde** erstellen.
 
-**Automatische Bereinigung:** Nach zehn Minuten ohne echte Bedienung der Lehrperson oder eines Teams löscht Supabase die Spielrunde und alle drei Teamdatensätze. Eingaben und Steuerungsaktionen verlängern die Frist, automatische Statusabfragen nicht. Supabase Cron prüft einmal pro Minute, daher kann die endgültige Löschung bis zu etwa einer Minute später erfolgen. Die lokale Demo ist nicht betroffen.
+**Automatische Bereinigung:** Nach zehn Minuten ohne echte Bedienung der Lehrperson oder eines Teams löscht Supabase die Spielrunde und alle Teamdatensätze. Eingaben und Steuerungsaktionen verlängern die Frist, automatische Statusabfragen nicht. Supabase Cron prüft einmal pro Minute, daher kann die endgültige Löschung bis zu etwa einer Minute später erfolgen. Die lokale Demo ist nicht betroffen.
 
 Weitere Unterrichtshinweise und Prüfliste: [UNTERRICHT_SETUP.md](UNTERRICHT_SETUP.md).
+
+## Spielmodus und Balancing
+- **3 Teams:** Unveränderte Originalmechanik aus V4, Marktvolumen 240'000 potenzielle Gäste. Die fünf Ereignisse, Investitionen, Preise und Schlusswertung sind unverändert.
+- **5 Teams:** Separat kalibrierter Gästemarkt mit 410'000 potenziellen Gästen. Dadurch konkurrieren fünf Unternehmen um einen entsprechend grösseren Markt. Die vier Zielgruppenanteile, Preis- und Investitionsregeln sowie der Bewertungsmassstab bleiben identisch. Eine faire Konkurrenzsituation entsteht weiterhin durch Entscheidungen und Nachfrage.
+- Bei fünf Teams erscheinen alle fünf Plätze, Ergebnisse und Linien im Lehrer-/Beamer-Dashboard und in der Schlussrangliste. Auch die lokale Demo und die Vorschau können mit fünf Teams getestet werden.
+- Nach einer Installation von `UPDATE_5_TEAM_MODE.sql` kann die Lehrperson die Teamanzahl **vor dem Erstellen** auswählen. Für bestehende Spielrunden ist sie nicht nachträglich änderbar.
+- Die SQL-Datei gibt nur zwei zusätzliche Slots und eine geprüfte 3-oder-5-Team-Auswahl frei. Die bisherigen Zeit- und Zugriffsregeln bleiben erhalten.
 
 ## Spielmechanik
 

@@ -20,6 +20,8 @@
   const phaseNames = {lobby:"Warteraum",intro:"Saisonereignis",decision:"Strategiephase",report:"Saisonbericht",finished:"Schlussrangliste"};
   const teamBySlot = (slot) => (room?.teams||[]).find(x => x.slot === Number(slot));
   const own = () => teamBySlot(session?.slot);
+  const teamCount = () => (room?.max_teams===5?5:3);
+  const teamWord = () => teamCount()===5?"fünf":"drei";
   const isHost = () => session && session.role === "host";
   const isProjector = () => session && session.role === "projector";
   const stateFor = t => (t && t.state && Object.keys(t.state).length ? t.state : clone(START));
@@ -52,7 +54,7 @@
     let data; try { data=raw?JSON.parse(raw):null; } catch { data=null; }
     if (!response.ok) {
       if (response.status===404 || (data && data.code==="PGRST202"))
-        throw new Error("Supabase-Funktionen fehlen oder sind veraltet. Bitte UPDATE_5_MIN_INAKTIVITAET.sql im Supabase SQL Editor ausführen (bei Neuinstallation: supabase_setup.sql).");
+        throw new Error("Supabase-Funktionen fehlen oder sind veraltet. Bitte die aktuelle SQL-Migration UPDATE_5_TEAM_MODE.sql im Supabase SQL Editor ausführen (bei Neuinstallation: supabase_setup.sql).");
       throw new Error((data && (data.message || data.error_description)) || "Supabase-Fehler ("+response.status+")");
     }
     return data;
@@ -114,8 +116,9 @@
       '<h2>Ihre Spielrunde. Ihre Regie.</h2><p>Eröffnen Sie eine Partie. Danach sehen Sie Spielcode, Teamstatus, Countdown, Rangliste und die komplette Spielsteuerung direkt in einem Dashboard.</p></div></section>'+
       '<div class="am-card-grid am-card-grid--single">'+
       '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">NEUES SPIEL</p><h3>Spielrunde und Dashboard eröffnen</h3></div></div>'+
-      '<p class="am-card-intro">Erstellen Sie einen Spielcode für drei Skigebiete. Das gemeinsame Dashboard kann anschliessend auch im Vollbild am Beamer gezeigt werden.</p>'+
-      '<div class="am-form-group"><label for="netRoomTitle">Name der Spielrunde</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager" autocomplete="off"></div>'+
+      '<p class="am-card-intro">Wählen Sie die Anzahl der Skigebiete. Der 3er-Modus behält sein Balancing, der 5er-Modus hat einen eigenen Gästemarkt.</p>'+
+      '<div class="am-form-group"><label for="netMaxTeams">Anzahl Skigebiete</label><select id="netMaxTeams" class="net-input"><option value="3">3 Teams, Originalbalancing</option><option value="5">5 Teams, eigener Gästemarkt</option></select></div>'+ 
+       '<div class="am-form-group"><label for="netRoomTitle">Name der Spielrunde</label><input class="net-input" id="netRoomTitle" maxlength="60" value="AlpenManager" autocomplete="off"></div>'+
       '<button class="btn am-submit" id="netCreate">Spiel erstellen und Dashboard öffnen <span aria-hidden="true">→</span></button>'+
       '<p class="am-footnote">Nach zehn Minuten ohne Aktivität auf allen Geräten wird die gesamte Spielrunde automatisch gelöscht.</p></section></div>'+
       '<div class="am-tools"><div><strong>Für die Vorbereitung</strong><p>Testen Sie die kombinierte Lehreranzeige oder das Spiel unabhängig von Supabase.</p></div><button class="btn alt" id="netOffline">Lokale Demo öffnen</button></div>'+
@@ -124,7 +127,16 @@
       const button=get("netCreate");if(button)button.disabled=true;
       try{
         status("Erstelle die Spielrunde …");
-        const x=await rpc("am_create_room",{p_title:get("netRoomTitle").value.trim()||"AlpenManager",p_pin:teacherPin});
+        const title=get("netRoomTitle").value.trim()||"AlpenManager",selectedCount=Number(get("netMaxTeams").value);
+         let x;
+         try {
+           x=await rpc("am_create_room",{p_title:title,p_pin:teacherPin,p_max_teams:selectedCount});
+         } catch(e) {
+           // Vor der neuen SQL-Migration bleibt der bestehende 3er-Modus spielbar.
+           if(selectedCount===3&&/Supabase-Funktionen fehlen/.test(e.message)){
+             x=await rpc("am_create_room",{p_title:title,p_pin:teacherPin});
+           } else throw e;
+         }
         teacherPin="";
         saveSession({code:x.code,token:x.token,role:"host"});
         await refresh(true);
@@ -145,7 +157,7 @@
       '<div class="am-eyebrow">PLANSPIEL · ANSPRUCHSGRUPPEN</div>'+
       '<h2>Führen. Entscheiden.<br>Verantwortung übernehmen.</h2>'+
       '<p>Leiten Sie Ihr Skigebiet durch fünf Wintersaisons. Ihre Entscheidungen beeinflussen Finanzen, Gäste und Anspruchsgruppen – manchmal erst Jahre später.</p>'+
-      '<div class="am-facts"><span><strong>5</strong> Saisons</span><span><strong>3</strong> Skigebiete</span><span><strong>7</strong> Anspruchsgruppen</span></div>'+
+      '<div class="am-facts"><span><strong>5</strong> Saisons</span><span><strong>3 oder 5</strong> Skigebiete</span><span><strong>7</strong> Anspruchsgruppen</span></div>'+
       '</div></section>'+
       '<div class="am-card-grid">'+
       '<section class="am-card am-card--primary"><div class="am-card-head"><span class="am-card-symbol" aria-hidden="true">01</span><div><p class="am-card-overline">FÜR LERNENDE</p><h3>Spiel beitreten</h3></div></div>'+
@@ -187,16 +199,16 @@
   }
   function commonHeader() {
     return pageTop(isHost()?"Spielleitung":(own()?.name||"Ihr Skigebiet"))+
-      '<div class="panel" style="margin-bottom:16px"><p id="netIdleCountdown" class="net-muted" style="margin:0 0 12px"></p><div class="net-flex"><div><span class="net-muted">Spielcode</span><div class="net-code">'+html(room.code)+'</div></div><div><span class="net-muted">Saison</span><h3>'+room.season+' / 5</h3></div><div class="net-flex">'+(isHost()?'<a class="btn alt" target="_blank" rel="noopener" href="?dashboard=1&amp;code='+encodeURIComponent(room.code)+'">Beamer-Dashboard öffnen</a>':'')+leaveButton()+'</div></div></div>';
+      '<div class="panel" style="margin-bottom:16px"><p id="netIdleCountdown" class="net-muted" style="margin:0 0 12px"></p><div class="net-flex"><div><span class="net-muted">Spielcode</span><div class="net-code">'+html(room.code)+'</div></div><div><span class="net-muted">Teams</span><h3>'+teamCount()+'</h3></div><div><span class="net-muted">Saison</span><h3>'+room.season+' / 5</h3></div><div class="net-flex">'+(isHost()?'<a class="btn alt" target="_blank" rel="noopener" href="?dashboard=1&amp;code='+encodeURIComponent(room.code)+'">Beamer-Dashboard öffnen</a>':'')+leaveButton()+'</div></div></div>';
   }
   function namesAndReady(){
     return (room.teams||[]).map(t=>'<div class="net-item net-flex"><div><strong>Skigebiet '+t.slot+': '+html(t.name)+'</strong><span class="net-muted">'+(room.phase==="decision"?(t.ready?"Entscheidungen eingereicht":"Entscheidungen ausstehend"):"Teilnahme bestätigt")+'</span></div><span class="net-flag '+(room.phase==="decision"&&!t.ready?"wait":"")+'">'+(room.phase==="decision"?(t.ready?"Bereit":"Offen"):"Beigetreten")+'</span></div>').join("");
   }
   function lobby(){
     const count=room.teams.length;
-    app().innerHTML=commonHeader()+'<div class="net-columns"><section class="panel"><h3>Angemeldete Skigebiete ('+count+'/3)</h3>'+namesAndReady()+(count<3?'<p class="net-note">Die Lernenden treten mit dem vierstelligen Spielcode bei. Die Skigebiete werden automatisch zugeteilt.</p>':'')+'</section>'+
-      '<section class="panel"><h3>'+(isHost()?"Spiel vorbereiten":"Warten auf den Start")+'</h3><p>'+(isHost()?"Sobald alle drei Skigebiete beigetreten sind, können Sie das gemeinsame Saisonereignis anzeigen.":"Die Lehrperson startet die Runde, sobald alle drei Teams bereit sind.")+'</p>'+
-      (isHost()?'<button class="btn net-action" id="netStart" '+(count!==3?'disabled':'')+'>Spiel starten</button>':'')+'</section></div>'+msgBox();
+    app().innerHTML=commonHeader()+'<div class="net-columns"><section class="panel"><h3>Angemeldete Skigebiete ('+count+'/'+teamCount()+')</h3>'+namesAndReady()+(count<teamCount()?'<p class="net-note">Die Lernenden treten mit dem vierstelligen Spielcode bei. Die Skigebiete werden automatisch zugeteilt.</p>':'')+'</section>'+
+      '<section class="panel"><h3>'+(isHost()?"Spiel vorbereiten":"Warten auf den Start")+'</h3><p>'+(isHost()?"Sobald alle Skigebiete beigetreten sind, können Sie das gemeinsame Saisonereignis anzeigen.":"Die Lehrperson startet die Runde, sobald alle Teams bereit sind.")+'</p>'+
+      (isHost()?'<button class="btn net-action" id="netStart" '+(count!==teamCount()?'disabled':'')+'>Spiel starten</button>':'')+'</section></div>'+msgBox();
     bindLeave();
     if(get("netStart"))get("netStart").onclick=()=>control("start");
   }
@@ -217,8 +229,8 @@
   function refreshTimer(){const el=get("netTime");if(el&&room?.phase==="decision"){el.textContent=formatTimer();el.style.color=secondsLeft()===0?"#b03238":"#12668b";}}
   function updateReady(){
     const el=get("netReady");if(el)el.innerHTML=isHost()?projectorTeams():namesAndReady();
-    const count=get("netCount");if(count)count.textContent=room.teams.filter(t=>t.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";
-    const btn=get("netFinish");if(btn)btn.disabled=room.teams.filter(t=>t.ready).length!==3&&secondsLeft()>0;
+    const count=get("netCount");if(count)count.textContent=room.teams.filter(t=>t.ready).length+" von "+teamCount()+" Teams haben ihre Entscheidungen eingereicht.";
+    const btn=get("netFinish");if(btn)btn.disabled=room.teams.filter(t=>t.ready).length!==teamCount()&&secondsLeft()>0;
   }
   function planDetails(){
     const t=own(),s=stateFor(t),d=(t?.choice&&Object.keys(t.choice).length?t.choice:defaults(s));
@@ -260,12 +272,12 @@
   }
   function hostDecisions(){
     app().innerHTML=commonHeader()+'<div class="net-top"><h2>Gemeinsame Strategiephase</h2><div class="net-timer" id="netTime">'+formatTimer()+'</div></div>'+
-      '<div class="net-columns"><section class="panel"><h3 id="netCount">0 / 3 Teams</h3><div id="netReady">'+namesAndReady()+'</div><p class="net-note">Der Countdown läuft auf dem Server für alle gleichzeitig. Nach Zeitablauf werden weitere Eingaben abgewiesen.</p><button class="btn" id="netFinish">Saison auswerten</button><p class="net-muted">Vorzeitig möglich, wenn alle Teams ihre Entscheidungen eingereicht haben. Sonst nach Ablauf der '+roundMinutes()+' Minuten.</p></section>'+
-      '<section class="panel"><h3>Spielleitung</h3><p>Die Lernenden sehen nur ihre eigenen Entscheidungen. Sobald die Saison beendet ist, werden alle drei Skigebiete zusammen berechnet und die Resultate veröffentlicht.</p><p class="net-muted">Die Lehrperson löst die Auswertung selbst aus, sobald alle drei Teams eingereicht haben oder '+roundMinutes()+' Minuten vergangen sind.</p></section></div>'+msgBox();
+      '<div class="net-columns"><section class="panel"><h3 id="netCount">0 / '+teamCount()+' Teams</h3><div id="netReady">'+namesAndReady()+'</div><p class="net-note">Der Countdown läuft auf dem Server für alle gleichzeitig. Nach Zeitablauf werden weitere Eingaben abgewiesen.</p><button class="btn" id="netFinish">Saison auswerten</button><p class="net-muted">Vorzeitig möglich, wenn alle Teams ihre Entscheidungen eingereicht haben. Sonst nach Ablauf der '+roundMinutes()+' Minuten.</p></section>'+
+      '<section class="panel"><h3>Spielleitung</h3><p>Die Lernenden sehen nur ihre eigenen Entscheidungen. Sobald die Saison beendet ist, werden alle Skigebiete zusammen berechnet und die Resultate veröffentlicht.</p><p class="net-muted">Die Lehrperson löst die Auswertung selbst aus, sobald alle Teams eingereicht haben oder '+roundMinutes()+' Minuten vergangen sind.</p></section></div>'+msgBox();
     bindLeave();get("netFinish").onclick=finishSeason;updateReady();
   }
   function scoreboard(){
-    const rows=(room.results||[]).slice().sort((a,b)=>Number(b.solvent)-Number(a.solvent)||b.score-a.score);
+    const rows=(room.results||[]).slice().sort((a,b)=>Number(b.solvent)-Number(a.solvent)||b.score-a.score||(b.profit-a.profit));
     if(!rows.length)return '<p>Die Ergebnisse werden vorbereitet.</p>';
     return '<div class="net-ranking">'+rows.map((r,i)=>'<div class="net-rank '+(i===0&&r.solvent?"winner":"")+'"><div class="net-flex"><div><strong>'+(i+1)+'. '+html(r.name)+'</strong><div class="net-muted">'+num(r.guests)+' Gäste · '+money(r.profit)+' Saisonergebnis · '+money(r.cash)+' Kontostand</div></div><strong>'+num(r.score)+'/100</strong></div>'+(r.solvent?"":'<span class="net-bad">Nicht gewinnberechtigt</span>')+'</div>').join("")+'</div>';
   }
@@ -296,7 +308,7 @@
   }
 
   // Beamer-Dashboard: eigene rein lesende Ansicht. Teamentscheidungen werden nie angefordert.
-  const colours=["#16769a","#d88736","#468e69"];
+  const colours=["#16769a","#d88736","#468e69","#9457aa","#bd4e65"];
   function projectorState(t){
     const source=isHost()&&t?.state&&Array.isArray(t.state.stake)?t.state:t?.stats;
     if(!source||!Array.isArray(source.stake))return null;
@@ -314,11 +326,11 @@
     return teams.sort((a,b)=>Number(b.rating?.solvent||false)-Number(a.rating?.solvent||false)||(b.rating?.total||0)-(a.rating?.total||0));
   }
   function projectorShell(title,sub){
-    return '<div class="projector"><div class="net-hero net-flex"><div><span style="font-size:14px;opacity:.8">ALPENMANAGER · LIVE-DASHBOARD</span><h2 style="margin:7px 0 5px">'+html(title)+'</h2><span style="opacity:.82">'+html(sub||"Drei Skigebiete · fünf Saisons")+'</span></div>'+
+    return '<div class="projector"><div class="net-hero net-flex"><div><span style="font-size:14px;opacity:.8">ALPENMANAGER · LIVE-DASHBOARD</span><h2 style="margin:7px 0 5px">'+html(title)+'</h2><span style="opacity:.82">'+html(sub||(teamCount()+" Skigebiete · fünf Saisons"))+'</span></div>'+
       '<div style="text-align:right"><div style="opacity:.8;font-size:13px">SPIELCODE</div><div class="net-code" style="color:white">'+html(room.code)+'</div><div style="opacity:.8;font-size:13px">Saison '+room.season+' von 5</div></div></div>';
   }
   function projectorTeams(){
-    return '<div class="net-grid">'+[1,2,3].map(slot=>{
+    return '<div class="net-grid">'+Array.from({length:teamCount()},(_,i)=>i+1).map(slot=>{
       const t=teamBySlot(slot);
       return '<div class="net-stat"><div class="net-muted">SKIGEBIET '+slot+'</div><h3 style="margin:7px 0">'+html(t?.name||"Noch nicht vergeben")+'</h3>'+
         '<div class="net-flex"><span class="net-flag '+(t&&room.phase==="decision"&&!t.ready?"wait":"")+'">'+
@@ -333,7 +345,7 @@
       listed.map((t,i)=>{
         const sc=t.rating;
         return '<div class="net-score-row"><strong style="font-size:23px">'+(i+1)+'.</strong><div><strong style="font-size:18px">'+html(t.name)+'</strong><div class="net-muted">'+(sc?.solvent?"Gewinnberechtigt":"Nicht gewinnberechtigt")+'</div></div>'+
-        '<strong class="net-big" style="font-size:28px">'+(sc?.total??"–")+'</strong><div class="net-extracol"><div class="net-bartrack"><div class="net-barfill" style="width:'+(sc?.total||0)+'%;background:'+colours[(t.slot-1)%3]+'"></div></div><span class="net-muted">'+money(t.state?.totalProfit||0)+' gesamt</span></div></div>';
+        '<strong class="net-big" style="font-size:28px">'+(sc?.total??"–")+'</strong><div class="net-extracol"><div class="net-bartrack"><div class="net-barfill" style="width:'+(sc?.total||0)+'%;background:'+colours[t.slot-1]+'"></div></div><span class="net-muted">'+money(t.state?.totalProfit||0)+' gesamt</span></div></div>';
       }).join("")+'</section>';
   }
   function projectorResults(){
@@ -370,14 +382,14 @@
     const phase=room.phase,count=(room.teams||[]).length,ready=(room.teams||[]).filter(t=>t.ready).length;
     let action="",hint="";
     if(phase==="lobby"){
-      action='<button class="btn" id="netStart" '+(count!==3?'disabled':'')+'>Spiel starten →</button>';
-      hint=count===3?"Alle drei Skigebiete sind angemeldet.":"Warten auf drei echte Teams: "+count+" von 3 angemeldet.";
+      action='<button class="btn" id="netStart" '+(count!==teamCount()?'disabled':'')+'>Spiel starten →</button>';
+      hint=count===teamCount()?"Alle "+teamWord()+" Skigebiete sind angemeldet.":"Warten auf "+teamCount()+" echte Teams: "+count+" von "+teamCount()+" angemeldet.";
     }else if(phase==="intro"){
       action='<button class="btn" id="netOpen">Strategiephase starten · '+roundMinutes()+' Minuten →</button>';
       hint="Alle Teams sehen dasselbe Saisonereignis.";
     }else if(phase==="decision"){
-      action='<button class="btn" id="netFinish" '+(ready!==3&&secondsLeft()>0?'disabled':'')+'>Saison auswerten →</button>';
-      hint=ready===3?"Alle Entscheidungen gespeichert. Sie können die Saison jetzt auswerten.":secondsLeft()<=0?"Die Entscheidungszeit ist abgelaufen. Sie können die Saison auswerten.":"Auswertung möglich, sobald alle Teams gespeichert haben, sonst nach '+roundMinutes()+' Minuten.";
+      action='<button class="btn" id="netFinish" '+(ready!==teamCount()&&secondsLeft()>0?'disabled':'')+'>Saison auswerten →</button>';
+      hint=ready===teamCount()?"Alle Entscheidungen gespeichert. Sie können die Saison jetzt auswerten.":secondsLeft()<=0?"Die Entscheidungszeit ist abgelaufen. Sie können die Saison auswerten.":"Auswertung möglich, sobald alle Teams gespeichert haben, sonst nach '+roundMinutes()+' Minuten.";
     }else if(phase==="report"){
       action='<button class="btn" id="netNext">'+(room.season===5?"Schlussrangliste anzeigen":"Nächste Saison vorbereiten")+' →</button>';
       hint="Besprechen Sie die Ergebnisse und starten Sie anschliessend die nächste Saison.";
@@ -400,13 +412,13 @@
     body+='<div class="net-flex" style="margin-bottom:14px"><span class="net-tag">'+(previewActive?"Lokale Vorschau":host?"Live · Lehrersteuerung und Beamer in einem":"Live · nur Anzeige · keine Spielsteuerung")+'</span><div class="net-flex"><button class="btn alt" id="netFull">Vollbild</button>'+leaveButton()+'</div></div>';
     if(host)body+=hostDashboardControls();
     if(phase==="lobby"){
-      body+='<div class="panel"><h3>Teams beitreten lassen</h3><p>Vierstelligen Spielcode auf der Startseite eingeben. Die drei Skigebiete werden automatisch und eindeutig zugeteilt.</p>'+projectorTeams()+'</div>';
+      body+='<div class="panel"><h3>Teams beitreten lassen</h3><p>Vierstelligen Spielcode auf der Startseite eingeben. Die '+teamCount()+' Skigebiete werden automatisch und eindeutig zugeteilt.</p>'+projectorTeams()+'</div>';
     }else if(phase==="intro"){
       const e=EVENTS[room.season-1],photo=EVENT_IMAGES[room.season-1];
       body+='<div class="event-screen" style="min-height:480px"><div class="event-photo" style="background-image:url(&quot;'+encodeURI(photo)+'&quot;)"></div><div class="event-shade"></div><div class="event-content"><div class="kicker">SAISON '+room.season+'/5 · EILMELDUNG</div><h2>'+html(e.title)+'</h2><p>'+html(e.desc)+'</p><p style="margin-top:16px">Die Spielleitung gibt die gemeinsame Strategiephase frei.</p></div></div>';
     }else if(phase==="decision"){
       body+='<section class="panel" style="text-align:center;margin-bottom:16px"><div class="net-muted">VERBLEIBENDE ENTSCHEIDUNGSZEIT</div><div class="net-project-timer" id="netTime">'+formatTimer()+'</div>'+
-        '<p class="net-sub">'+(secondsLeft()>0?"Die drei Skigebiete entscheiden gleichzeitig.":"Zeit abgelaufen. Die Spielleitung berechnet jetzt die Saison.")+'</p></section><section class="panel"><h3>Fortschritt der drei Skigebiete</h3><div id="netReady">'+projectorTeams()+'</div><p class="net-muted" id="netCount">'+room.teams.filter(x=>x.ready).length+' von 3 Teams haben ihre Entscheidungen eingereicht.</p></section>';
+        '<p class="net-sub">'+(secondsLeft()>0?"Alle "+teamCount()+" Skigebiete entscheiden gleichzeitig.":"Zeit abgelaufen. Die Spielleitung berechnet jetzt die Saison.")+'</p></section><section class="panel"><h3>Fortschritt der '+teamCount()+' Skigebiete</h3><div id="netReady">'+projectorTeams()+'</div><p class="net-muted" id="netCount">'+room.teams.filter(x=>x.ready).length+' von '+teamCount()+' Teams haben ihre Entscheidungen eingereicht.</p></section>';
       if(room.season>1)body+=projectorStanding();
     }else if(phase==="report"){
       body+=projectorStanding()+projectorResults();
@@ -452,7 +464,7 @@
       else {
         lastVersion=room.version;
         refreshIdleDisplay();
-        if(room.phase==="decision"){refreshTimer();if(!isHost()&&!isProjector()&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von 3 Teams haben ihre Entscheidungen eingereicht.";}}
+        if(room.phase==="decision"){refreshTimer();if(!isHost()&&!isProjector()&&secondsLeft()<=0&&get("netSave"))paintDecision();if(isHost())updateReady();if(isProjector()){const p=get("netReady");if(p)p.innerHTML=projectorTeams();const q=get("netCount");if(q)q.textContent=room.teams.filter(x=>x.ready).length+" von "+teamCount()+" Teams haben ihre Entscheidungen eingereicht.";}}
         
       }
     }catch(e){
@@ -473,13 +485,13 @@
   async function finishSeason(){
     if(!session||!isHost()||working||!room||room.phase!=="decision")return;
     lastFinishAttempt=Date.now();
-    if(secondsLeft()>0&&room.teams.filter(x=>x.ready).length!==3){status("Vorzeitig nur möglich, wenn alle drei Teams ihre Entscheidungen gespeichert haben.",true);return;}
-    working=true;status("Berechne die Saison für alle drei Skigebiete …");
+    if(secondsLeft()>0&&room.teams.filter(x=>x.ready).length!==teamCount()){status("Vorzeitig nur möglich, wenn alle "+teamCount()+" Teams ihre Entscheidungen gespeichert haben.",true);return;}
+    working=true;status("Berechne die Saison für alle "+teamCount()+" Skigebiete …");
     try{
       const fresh=await rpc("am_read_room",{p_code:session.code,p_token:session.token});
       if(fresh.phase!=="decision"){room=fresh;showPage();return;}
       const teams=fresh.teams.slice().sort((a,b)=>a.slot-b.slot);
-      if(teams.length!==3)throw Error("Die Saison kann nur mit drei Teams berechnet werden.");
+      if(teams.length!==(fresh.max_teams===5?5:3))throw Error("Die Saison benötigt genau "+(fresh.max_teams===5?5:3)+" Teams.");
       game=newGame(teams.map(x=>x.name));
       game.season=fresh.season;
       game.teams.forEach((t,i)=>{
@@ -489,7 +501,7 @@
       const oldReport=showReport,oldLocalSave=save;
       showReport=()=>{};save=()=>{}; // Online-Simulation nicht versehentlich in die lokale Demo speichern.
       try{runSeason();}finally{showReport=oldReport;save=oldLocalSave;}
-      const results=game.teams.map((t,i)=>({slot:i+1,state:t.state,score:score(t).total,solvent:score(t).solvent}));
+      const results=game.teams.map((t,i)=>({slot:teams[i].slot,state:t.state,score:score(t).total,solvent:score(t).solvent}));
       await rpc("am_publish_results",{p_code:session.code,p_token:session.token,p_states:results});
       room=null;await refresh(true);
     }catch(e){status("Saisonberechnung: "+e.message,true)}
@@ -498,16 +510,18 @@
 
   // Offline-Vorschau der ECHTEN Lehrer- und Beamer-Oberfläche.
   // Eigene Beispiel-Partie wird im Speicher simuliert, niemals über Supabase.
-  let previewSnapshots = [], previewPhase = "decision", previewRole = "teacher", previewSeason = 2;
+  let previewSnapshots = [], previewPhase = "decision", previewRole = "teacher", previewSeason = 2, previewTeamCount = 3;
   function samplePreviewStates(){
     const savedGame=game, savedShowReport=showReport, savedSave=save;
     const strategies=[
       {price:65,staff:65,wage:2,marketing:150000,maintenance:225000,segment:"Familien",supplier:"zuverlässig",invest:["family","lift","digital","service","none"]},
       {price:75,staff:55,wage:3,marketing:125000,maintenance:250000,segment:"Junge Erwachsene",supplier:"nachhaltig",invest:["eco","shuttle","staffHome","digital","none"]},
-      {price:70,staff:60,wage:0,marketing:100000,maintenance:200000,segment:"Sportliche Gäste",supplier:"zuverlässig",invest:["freestyle","snow","service","eco","none"]}
+      {price:70,staff:60,wage:0,marketing:100000,maintenance:200000,segment:"Sportliche Gäste",supplier:"zuverlässig",invest:["freestyle","snow","service","eco","none"]},
+       {price:85,staff:60,wage:1,marketing:100000,maintenance:220000,segment:"Premiumgäste",supplier:"zuverlässig",invest:["wellness","eco","digital","service","none"]},
+       {price:70,staff:60,wage:0,marketing:125000,maintenance:200000,segment:"Familien",supplier:"zuverlässig",invest:["family","shuttle","staffHome","eco","none"]}
     ];
     try{
-      game=newGame(["Alpenblick","Schneeglück","Bergzauber"]);
+      game=newGame(["Alpenblick","Schneeglück","Bergzauber","Gipfelsturm","Pistenzauber"].slice(0,previewTeamCount));
       showReport=()=>{};save=()=>{};
       previewSnapshots=[game.teams.map(t=>clone(t.state))];
       for(let season=1;season<=5;season++){
@@ -525,7 +539,7 @@
   function previewRoom(){
     const completed=previewPhase==="finished"?5:previewPhase==="report"?previewSeason:previewPhase==="lobby"?0:previewSeason-1;
     const states=previewSnapshots[Math.max(0,Math.min(5,completed))];
-    const names=["Alpenblick","Schneeglück","Bergzauber"];
+    const names=["Alpenblick","Schneeglück","Bergzauber","Gipfelsturm","Pistenzauber"].slice(0,previewTeamCount);
     const teams=states.map((state,i)=>({
       slot:i+1,name:names[i],ready:previewPhase==="decision"?i!==2:false,
       choice:{},state:completed?clone(state):{},
@@ -541,7 +555,7 @@
       code:"0000",title:"AlpenManager – Vorschau",phase:previewPhase,
       season:previewPhase==="finished"?5:previewPhase==="lobby"?1:previewSeason,
       deadline:previewPhase==="decision"?new Date(Date.now()+(previewSeason===1?360:180)*1000).toISOString():null,
-      version:1,results,teams
+      version:1,max_teams:previewTeamCount,results,teams
     };
   }
   function renderDemoPreview(){
@@ -551,11 +565,14 @@
     const toolbar=get("demoPreviewToolbar");
     if(toolbar){
       toolbar.innerHTML='<div class="demo-preview-label"><strong>DEMO · LEHRPERSONEN-VORSCHAU</strong><small>Beispieldaten · keine Verbindung zu Supabase</small></div>'+
-       '<label>Ansicht <select id="demoPreviewRole"><option value="teacher">Spielleitung</option><option value="projector">Beamer-Dashboard</option></select></label>'+
+       '<label>Teams <select id="demoPreviewTeams"><option value="3">3</option><option value="5">5</option></select></label>'+ 
+        '<label>Ansicht <select id="demoPreviewRole"><option value="teacher">Spielleitung</option><option value="projector">Beamer-Dashboard</option></select></label>'+
        '<label>Spielphase <select id="demoPreviewPhase"><option value="lobby">Warteraum</option><option value="intro">Saisonereignis</option><option value="decision">Strategiephase</option><option value="report">Saisonbericht</option><option value="finished">Schlussrangliste</option></select></label>'+
        '<label>Saison <select id="demoPreviewSeason">'+[1,2,3,4,5].map(x=>'<option value="'+x+'">'+x+' / 5</option>').join("")+'</select></label>'+
        '<a class="btn alt demo-preview-exit" href="?">Zur Startseite</a>';
-      get("demoPreviewRole").value=previewRole;
+      get("demoPreviewTeams").value=String(previewTeamCount);
+       get("demoPreviewTeams").onchange=()=>{previewTeamCount=Number(get("demoPreviewTeams").value);samplePreviewStates();renderDemoPreview()};
+       get("demoPreviewRole").value=previewRole;
       get("demoPreviewPhase").value=previewPhase;
       get("demoPreviewSeason").value=String(previewSeason);
       get("demoPreviewSeason").disabled=previewPhase==="lobby"||previewPhase==="finished";

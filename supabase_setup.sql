@@ -10,6 +10,7 @@ create table if not exists am_private.rooms (
  title text not null default 'AlpenManager',
  host_hash text not null,
  season integer not null default 1 check (season between 1 and 5),
+ max_teams integer not null default 3 check (max_teams in (3,5)),
  phase text not null default 'lobby' check (phase in ('lobby','intro','decision','report','finished')),
  deadline timestamptz,
  results jsonb not null default '[]'::jsonb,
@@ -20,7 +21,7 @@ create table if not exists am_private.rooms (
 create table if not exists am_private.teams (
  id uuid primary key default gen_random_uuid(),
  room_id uuid not null references am_private.rooms(id) on delete cascade,
- slot integer not null check (slot between 1 and 3),
+ slot integer not null check (slot between 1 and 5),
  name text not null,
  access_hash text not null,
  choice jsonb not null default '{}'::jsonb,
@@ -29,6 +30,11 @@ create table if not exists am_private.teams (
  updated_at timestamptz not null default now(),
  unique(room_id,slot)
 );
+
+-- Bestehende Runden behalten drei Teams.
+alter table am_private.rooms add column if not exists max_teams integer not null default 3 check (max_teams in (3,5));
+alter table am_private.teams drop constraint if exists teams_slot_check;
+alter table am_private.teams add constraint teams_slot_check check (slot between 1 and 5);
 
 -- Zehn Minuten ohne Bedienung: Raum samt Teams automatisch löschen.
 -- Bestehende Spielrunden erhalten beim Update eine neue 10-Minuten-Frist.
@@ -79,6 +85,27 @@ begin
  return jsonb_build_object('code',v_code,'token',v_token,'role','host');
 end; $$;
 
+create or replace function public.am_create_room(p_title text,p_pin text,p_max_teams integer)
+returns jsonb language plpgsql security definer set search_path = ''
+as $$
+declare v_code text; v_token text; v_id uuid; v_try integer;
+begin
+ if md5(coalesce(p_pin,'')) <> '81dc9bdb52d04dc20036dbd8313ed055'
+ then raise exception 'Lehrpersonen-Passwort ungültig'; end if;
+ if p_max_teams is null or p_max_teams not in (3,5) then raise exception 'Nur 3 oder 5 Teams erlaubt'; end if;
+  if length(trim(coalesce(p_title,''))) > 60 then raise exception 'Titel ist zu lang'; end if;
+ v_token := replace(gen_random_uuid()::text,'-','') || replace(gen_random_uuid()::text,'-','');
+ for v_try in 1..80 loop
+  v_code := lpad((floor(random()*10000)::integer)::text,4,'0');
+  insert into am_private.rooms(code,title,host_hash,max_teams)
+   values(v_code,coalesce(nullif(trim(p_title),''),'AlpenManager'),md5(v_token),p_max_teams)
+   on conflict (code) do nothing returning id into v_id;
+  exit when v_id is not null;
+ end loop;
+ if v_id is null then raise exception 'Kein freier Spielcode gefunden. Alte Spielrunden bei Bedarf löschen.'; end if;
+ return jsonb_build_object('code',v_code,'token',v_token,'role','host','max_teams',p_max_teams);
+end; $$;
+
 -- Alte Join-Signatur entfernen, damit Teams nicht mehr manuell eine Nummer wählen können.
 drop function if exists public.am_join_room(text,integer,text);
 
@@ -100,12 +127,12 @@ begin
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  if v_room.phase<>'lobby' then raise exception 'Beitritt nur vor Spielbeginn möglich'; end if;
  select available.slot into v_slot
- from generate_series(1,3) as available(slot)
+ from generate_series(1,v_room.max_teams) as available(slot)
  where not exists(
    select 1 from am_private.teams t where t.room_id=v_room.id and t.slot=available.slot
  )
  order by available.slot limit 1;
- if v_slot is null then raise exception 'Alle drei Skigebiete sind bereits vergeben'; end if;
+ if v_slot is null then raise exception 'Alle Plätze dieser Spielrunde sind bereits vergeben'; end if;
  v_token:=replace(gen_random_uuid()::text,'-','')||replace(gen_random_uuid()::text,'-','');
  insert into am_private.teams(room_id,slot,name,access_hash)
  values(v_room.id,v_slot,v_name,md5(v_token));
@@ -132,7 +159,7 @@ begin
  end if;
  return jsonb_build_object(
   'code',v_room.code,'title',v_room.title,'role',case when v_host then 'host' else 'team' end,
-  'slot',v_slot,'season',v_room.season,'phase',v_room.phase,
+  'slot',v_slot,'season',v_room.season,'phase',v_room.phase,'max_teams',v_room.max_teams,
   'deadline',v_room.deadline,'version',v_room.version,'last_activity',v_room.last_activity,'results',v_room.results,
   'teams',coalesce((
    select jsonb_agg(
@@ -200,8 +227,8 @@ begin
  if v_room.last_activity <= now() - interval '10 minutes'
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  if p_action='start' and v_room.phase='lobby' then
-  if (select count(*) from am_private.teams where room_id=v_room.id)<>3
-  then raise exception 'Zuerst müssen alle drei Teams beitreten'; end if;
+  if (select count(*) from am_private.teams where room_id=v_room.id)<>v_room.max_teams
+  then raise exception 'Zuerst müssen alle '||v_room.max_teams||' Teams beitreten'; end if;
   update am_private.rooms set phase='intro',season=1,deadline=null,
     last_activity=now(),version=version+1 where id=v_room.id;
  elsif p_action='open' and v_room.phase='intro' then
@@ -239,12 +266,12 @@ begin
    (select count(*) from am_private.teams where room_id=v_room.id and ready)=0
  then raise exception 'Es wurden noch keine Entscheidungen gespeichert'; end if;
  if now()<v_room.deadline and
-   (select count(*) from am_private.teams where room_id=v_room.id and ready)<>3
- then raise exception 'Vor Ablauf der Entscheidungszeit müssen alle drei Teams gespeichert haben'; end if;
- if jsonb_typeof(p_states)<>'array' or jsonb_array_length(p_states)<>3
- then raise exception 'Es werden drei Teamresultate benötigt'; end if;
- if (select count(*) from am_private.teams where room_id=v_room.id)<>3
- then raise exception 'Drei Teams erforderlich'; end if;
+   (select count(*) from am_private.teams where room_id=v_room.id and ready)<>v_room.max_teams
+ then raise exception 'Vor Ablauf der Entscheidungszeit müssen alle Teams gespeichert haben'; end if;
+ if jsonb_typeof(p_states)<>'array' or jsonb_array_length(p_states)<>v_room.max_teams
+ then raise exception 'Die Anzahl der Teamresultate stimmt nicht mit der Spielrunde überein'; end if;
+ if (select count(*) from am_private.teams where room_id=v_room.id)<>v_room.max_teams
+ then raise exception 'Unvollständige Spielrunde'; end if;
  for v_team in select * from am_private.teams where room_id=v_room.id order by slot for update loop
   select x.entry into v_entry from jsonb_array_elements(p_states) as x(entry)
    where x.entry->>'slot'=v_team.slot::text limit 1;
@@ -282,7 +309,7 @@ begin
  then raise exception 'Spielrunde wegen Inaktivität beendet'; end if;
  return jsonb_build_object(
    'code',v_room.code,'title',v_room.title,'role','projector',
-   'season',v_room.season,'phase',v_room.phase,
+   'season',v_room.season,'phase',v_room.phase,'max_teams',v_room.max_teams,
    'deadline',v_room.deadline,'version',v_room.version,'last_activity',v_room.last_activity,'results',v_room.results,
    'teams',coalesce((
     select jsonb_agg(jsonb_build_object(
@@ -332,6 +359,8 @@ revoke all on function public.am_publish_results(text,text,jsonb) from public,an
 grant execute on function public.am_touch_room(text,text) to anon,authenticated;
 grant execute on function public.am_verify_teacher(text) to anon,authenticated;
 grant execute on function public.am_create_room(text,text) to anon,authenticated;
+revoke all on function public.am_create_room(text,text,integer) from public,anon,authenticated;
+grant execute on function public.am_create_room(text,text,integer) to anon,authenticated;
 grant execute on function public.am_join_room(text,text) to anon,authenticated;
 grant execute on function public.am_read_room(text,text) to anon,authenticated;
 grant execute on function public.am_save_choice(text,text,jsonb) to anon,authenticated;
