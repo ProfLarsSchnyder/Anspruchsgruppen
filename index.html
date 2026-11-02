@@ -238,7 +238,7 @@ const round=n=>Math.round(n);
 const clamp=(x,min,max)=>Math.min(max,Math.max(min,x));
 function clone(x){return JSON.parse(JSON.stringify(x))}
 function canBuyInvestment(s,id){return id==="none"||(INVEST.some(x=>x.id===id)&&!s.assets[id])}
-function defaults(s){return {price:s.price,staff:s.staff,wage:s.wage,marketing:s.marketing,maintenance:s.maintenance,segment:"Familien",supplier:"zuverlässig",investment:"none"}}
+function defaults(s){return {price:s.price,staff:s.staff,wage:s.wage,marketing:s.marketing,maintenance:s.maintenance,segment:SEGMENTS.includes(s.segment)?s.segment:SEGMENTS.includes(s.last?.decision?.segment)?s.last.decision.segment:"Familien",supplier:"zuverlässig",investment:"none"}}
 const SEGMENTS=["Familien","Junge Erwachsene","Sportliche Gäste","Premiumgäste"];
 let game=null, settings=null, mode="start", selected=0, ticking=null, ends=0;
 function newGame(names){return {teams:names.map((name,i)=>({id:i,name,state:clone(START),pick:defaults(START)})),season:1,logs:[],started:Date.now()}}
@@ -426,7 +426,7 @@ const salary=(Math.min(d.staff,55)*62000+Math.max(0,d.staff-55)*40000)*(1+d.wage
  ns.debt+=borrowing;cash+=borrowing;
  if(borrowing>0)news.push("Notkredit zur Liquiditätssicherung: "+money(borrowing)+"; Schuldenstand "+money(ns.debt)+".");
  if(cash<0){ns.bankrupt=true;news.push("Zahlungsunfähigkeit: Die Kreditlimite ist ausgeschöpft. Das Skigebiet scheidet aus dem Wettbewerb aus.");}
-}ns.cash=cash;ns.guests=round(guests);ns.staff=d.staff;ns.price=d.price;ns.wage=d.wage;ns.marketing=d.marketing;ns.maintenance=d.maintenance;ns.totalProfit+=profit;ns.profits.push(round(profit));const changeGuests=(guests-s.guests)/Math.max(1,s.guests);effect(0,clamp((65-d.price)/2,-12,12)+(premiumOfferReady(d,ns)?3*Math.exp(-Math.pow((d.price-87.5)/8,2)):0)+(ns.quality-s.quality)/3+(changeGuests>0?2:-2),d.price<s.price?"Tiefere Ticketpreise locken Gäste an, reduzieren aber den Erlös pro Ticket.":d.price>s.price?"Höhere Ticketpreise können preisbewusste Gäste abschrecken.":null);const wageCut=Math.max(0,s.wage-d.wage);
+}ns.cash=cash;ns.guests=round(guests);ns.staff=d.staff;ns.price=d.price;ns.segment=d.segment;ns.wage=d.wage;ns.marketing=d.marketing;ns.maintenance=d.maintenance;ns.totalProfit+=profit;ns.profits.push(round(profit));const changeGuests=(guests-s.guests)/Math.max(1,s.guests);effect(0,clamp((65-d.price)/2,-12,12)+(premiumOfferReady(d,ns)?3*Math.exp(-Math.pow((d.price-87.5)/8,2)):0)+(ns.quality-s.quality)/3+(changeGuests>0?2:-2),d.price<s.price?"Tiefere Ticketpreise locken Gäste an, reduzieren aber den Erlös pro Ticket.":d.price>s.price?"Höhere Ticketpreise können preisbewusste Gäste abschrecken.":null);const wageCut=Math.max(0,s.wage-d.wage);
 const belowBase=Math.max(0,-d.wage);
 effect(1,(d.wage-s.wage)*(d.wage<s.wage?2.9:1.25)+(d.staff-s.staff)*.28-(e.staff?3:0)-belowBase*.45,d.wage>s.wage?"Höhere Löhne steigern Mitarbeiterzufriedenheit, aber auch Personalkosten.":d.wage<s.wage?"Die Lohnkürzung belastet die Mitarbeiterzufriedenheit stark. Fluktuation und schlechterer Service können in der nächsten Saison Gäste kosten.":null);
 if((wageCut>=2||belowBase>=5)&&game.season<5){
