@@ -28,6 +28,13 @@ Weitere Unterrichtshinweise und Prüfliste: [UNTERRICHT_SETUP.md](UNTERRICHT_SET
 
 Strategische Entscheidungen zu Ticketpreis, Personal, Löhnen, Marketing, Zielgruppe, Wartung, Investitionen und Lieferanten wirken auf Finanzen, Gästezahlen und sieben Anspruchsgruppen. Die Abschlussbewertung gewichtet Wirtschaft zu 40 %, Anspruchsgruppen zu 40 % und Zukunftsfähigkeit zu 20 %. Die lokale Demo im Lehrpersonenbereich ist unabhängig von Supabase.
 
+### Balancing V3: Premiumpreis und Qualität (November 2026)
+- **Premium-Sweetspot:** CHF 85 bis 90 statt CHF 75 bis 80, sofern Wellness-Lounge, mindestens 55 Mitarbeitende, CHF 160'000 Wartung und Infrastrukturqualität von mindestens 70 Punkten vorhanden sind.
+- Passende Premiumpreise stärken die Attraktivität moderat und ermöglichen etwas höhere Wellness-/Gastronomie-Nebeneinnahmen; unter CHF 85 passt der Preis weniger gut zum Premiumangebot, über CHF 90 sinkt die Nachfrage deutlich.
+- Der Bonus entfällt ohne Premiuminvestition oder bei vernachlässigter Qualität, Wartung oder Personal. Keine Änderungen an Investitionspreisen, Marktanteilen oder Datenbankschema gegenüber V2.
+- **Balancing-Test:** Bei zwei Familiengebieten mit CHF 75 und einem Premiumgebiet mit passenden Investitionen ergaben fünf Saisons bei CHF 80 rund CHF 5,5 Mio., bei CHF 85 rund CHF 7,9 Mio., bei CHF 90 rund CHF 7,2 Mio. Premiumgewinn. Zwei Familiengebiete erzielen in der CHF-85-Variante je rund CHF 7,4 Mio. Die Schlusswertung berücksichtigt zusätzlich Anspruchsgruppen und Zukunftsfähigkeit.
+- Für diese reine Berechnungsänderung ist **kein zusätzliches Supabase-SQL** erforderlich, sofern Balancing V2 bereits installiert wurde.
+
 ### Balancing V2 (November 2026)
 - Marktanteile: Familien 32 %, junge Erwachsene 28 %, sportliche Gäste 25 %, Premiumgäste 15 %.
 - Das Kinderland bleibt eine Familieninvestition, sein Nachfragebonus ist leicht reduziert.

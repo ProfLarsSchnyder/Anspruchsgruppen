@@ -295,15 +295,23 @@ function tick(){if(mode!=="season")return;const rem=Math.max(0,Math.ceil((ends-D
 function store(showMsg=false){const t=game.teams[selected];t.pick=getDecision();if(!canBuyInvestment(t.state,t.pick.investment))t.pick.investment="none";t.ready=true;save();$("#ready").textContent=game.teams.filter(x=>x.ready).length+" / 3";if(showMsg)$("#status").textContent="Entscheidungen gespeichert."}
 const SEGMENT_MARKET=[{name:"Familien",share:.32,elasticity:1.05},{name:"Junge Erwachsene",share:.28,elasticity:1.0},{name:"Sportliche Gäste",share:.25,elasticity:.65},{name:"Premiumgäste",share:.15,elasticity:.4}];
 function capacityOf(s,d){return Math.max(42000,90000+(d.staff-60)*1250+(s.assets.lift||0)*8000)}
-// Premiumgäste reagieren weniger auf hohe Preise, benötigen aber ein hochwertiges Angebot.
-function priceAttractiveness(d,segment){
- const premiumPenalty=segment.name==="Premiumgäste"?.008:.028;
- return Math.pow(65/d.price,segment.elasticity*(d.price<65?.50:1))*Math.exp(-premiumPenalty*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+// Ein Premiumpreis funktioniert nur mit hochwertiger Infrastruktur, Service und ausreichender Wartung.
+function premiumOfferReady(d,s){
+ return d.segment==="Premiumgäste" && (s.assets.wellness||0)>0 && s.quality>=70 && d.maintenance>=160000 && d.staff>=55;
+}
+function priceAttractiveness(d,segment,s){
+ const premium=premiumOfferReady(d,s);
+ const penalty=segment.name==="Premiumgäste"?.008:.028;
+ const base=Math.pow(65/d.price,segment.elasticity*(d.price<65?.50:1))*Math.exp(-penalty*(premium?.7:1)*Math.max(0,d.price-75)-.040*Math.max(0,d.price-90));
+ // Passender Premiumpreis: CHF 85-90. Tiefere Preise untergraben die Positionierung;
+ // über CHF 90 sinkt die Nachfrage weiterhin deutlich.
+ const premiumPosition=premium?(1+.03*Math.exp(-Math.pow((d.price-87.5)/9,2)))*Math.exp(-.022*Math.max(0,85-d.price)):1;
+ return base*premiumPosition;
 }
 function appeal(t,segment,e){
  const d=t.pick,s=t.state;
  // Unter CHF 65 nimmt der zusätzliche Werbeeffekt einer Preissenkung deutlich ab.
- const price=priceAttractiveness(d,segment);
+ const price=priceAttractiveness(d,segment,s);
  const quality=clamp(.75+(s.quality-75)*.012+.028*s.assets.lift+.018*s.assets.service,.55,1.65)*(s.assets.lift&&s.assets.service?.965:1);
  const staffRatio=d.staff/Math.max(50,s.guests/1450);
  const service=clamp(.68+.31*staffRatio,.64,1.2);
@@ -345,7 +353,7 @@ function marketDemand(teams,e){
   const loyalShare=.36*clamp((65-lowPrice)/20,0,1);
   const withoutPrice=scores.map((v,i)=>{
    const d=teams[i].pick;
-   const priceTerm=priceAttractiveness(d,segment);
+   const priceTerm=priceAttractiveness(d,segment,teams[i].state);
    return v/priceTerm;
   });
   const stableTotal=withoutPrice.reduce((a,b)=>a+b,0);
@@ -411,13 +419,13 @@ if(item.id==="digital"){effect(0,5,"Digitales Ticketing verbessert die Buchung u
  if(item.id==="freestyle"){effect(0,4,"Der Freestyle-Park verbessert das Angebot für sportliche und junge Gäste.");news.push("Freestyle-Park: höhere Attraktivität für sportliche Gäste und junge Erwachsene.");}
  if(item.id==="wellness"){effect(0,5,"Die Wellness-Lounge erweitert das hochwertige Gästeangebot.");news.push("Premium-Lounge: mehr Komfort und zusätzliche Nebenerträge, besonders bei einer Premiumpositionierung.");}}const supplierRiskCost=d.supplier==="günstig"&&s.stake[3]<63?48000:0;const supplierCost=(d.supplier==="günstig"?-80000:d.supplier==="nachhaltig"?65000:0)+supplierRiskCost;if(supplierRiskCost)news.push("Wiederholte Billigbeschaffung verursacht zusätzliche Lieferausfälle und Sonderkosten: "+money(supplierRiskCost)+".");// Fixe Stammbelegschaft (bis 55): CHF 62'000 pro Stelle.
 // Zusätzliches Saisonpersonal: CHF 40'000 pro Stelle, gleicher Kapazitäts- und Serviceeffekt.
-const salary=(Math.min(d.staff,55)*62000+Math.max(0,d.staff-55)*40000)*(1+d.wage/100),fuel=(700000+guests*2.0)*e.factor*(1-.09*ns.assets.eco),operating=835000+guests*5.5+supplierCost+ns.assets.lift*255000+ns.assets.snow*45000+ns.assets.service*95000+(ns.assets.lift&&ns.assets.service?55000:0)+(ns.assets.lift&&ns.assets.eco?20000:0)+ns.assets.eco*18000+(ns.assets.family||0)*65000+(ns.assets.staffHome||0)*40000+(ns.assets.shuttle||0)*50000+(ns.assets.digital||0)*35000+(ns.assets.freestyle||0)*45000+(ns.assets.wellness||0)*60000,tickets=guests*d.price,extras=guests*(13+(ns.assets.lift?1.55:1.8)*ns.assets.service+(3-.6*clamp((d.price-65)/10,0,1))*(ns.assets.family||0)+(ns.assets.wellness||0)*(d.segment==="Premiumgäste"?10:1)),rev=tickets+extras;const interest=ns.debt*.055;let maintenance=d.maintenance;let profit=rev-salary-fuel-operating-d.marketing-maintenance-interest;const cashBefore=ns.cash;let cash=ns.cash+profit-invest;let borrowing=0;if(cash<0){
+const salary=(Math.min(d.staff,55)*62000+Math.max(0,d.staff-55)*40000)*(1+d.wage/100),fuel=(700000+guests*2.0)*e.factor*(1-.09*ns.assets.eco),operating=835000+guests*5.5+supplierCost+ns.assets.lift*255000+ns.assets.snow*45000+ns.assets.service*95000+(ns.assets.lift&&ns.assets.service?55000:0)+(ns.assets.lift&&ns.assets.eco?20000:0)+ns.assets.eco*18000+(ns.assets.family||0)*65000+(ns.assets.staffHome||0)*40000+(ns.assets.shuttle||0)*50000+(ns.assets.digital||0)*35000+(ns.assets.freestyle||0)*45000+(ns.assets.wellness||0)*60000,tickets=guests*d.price,extras=guests*(13+(ns.assets.lift?1.55:1.8)*ns.assets.service+(3-.6*clamp((d.price-65)/10,0,1))*(ns.assets.family||0)+(ns.assets.wellness||0)*(d.segment==="Premiumgäste"?(10+(premiumOfferReady(d,ns)?.65*Math.max(0,Math.min(10,d.price-80)):0)):1)),rev=tickets+extras;const interest=ns.debt*.055;let maintenance=d.maintenance;let profit=rev-salary-fuel-operating-d.marketing-maintenance-interest;const cashBefore=ns.cash;let cash=ns.cash+profit-invest;let borrowing=0;if(cash<0){
  const need=-cash+100000;
  borrowing=Math.min(need,Math.max(0,MAX_DEBT-ns.debt));
  ns.debt+=borrowing;cash+=borrowing;
  if(borrowing>0)news.push("Notkredit zur Liquiditätssicherung: "+money(borrowing)+"; Schuldenstand "+money(ns.debt)+".");
  if(cash<0){ns.bankrupt=true;news.push("Zahlungsunfähigkeit: Die Kreditlimite ist ausgeschöpft. Das Skigebiet scheidet aus dem Wettbewerb aus.");}
-}ns.cash=cash;ns.guests=round(guests);ns.staff=d.staff;ns.price=d.price;ns.wage=d.wage;ns.marketing=d.marketing;ns.maintenance=d.maintenance;ns.totalProfit+=profit;ns.profits.push(round(profit));const changeGuests=(guests-s.guests)/Math.max(1,s.guests);effect(0,clamp((65-d.price)/2,-12,12)+(ns.quality-s.quality)/3+(changeGuests>0?2:-2),d.price<s.price?"Tiefere Ticketpreise locken Gäste an, reduzieren aber den Erlös pro Ticket.":d.price>s.price?"Höhere Ticketpreise können preisbewusste Gäste abschrecken.":null);const wageCut=Math.max(0,s.wage-d.wage);
+}ns.cash=cash;ns.guests=round(guests);ns.staff=d.staff;ns.price=d.price;ns.wage=d.wage;ns.marketing=d.marketing;ns.maintenance=d.maintenance;ns.totalProfit+=profit;ns.profits.push(round(profit));const changeGuests=(guests-s.guests)/Math.max(1,s.guests);effect(0,clamp((65-d.price)/2,-12,12)+(premiumOfferReady(d,ns)?3*Math.exp(-Math.pow((d.price-87.5)/8,2)):0)+(ns.quality-s.quality)/3+(changeGuests>0?2:-2),d.price<s.price?"Tiefere Ticketpreise locken Gäste an, reduzieren aber den Erlös pro Ticket.":d.price>s.price?"Höhere Ticketpreise können preisbewusste Gäste abschrecken.":null);const wageCut=Math.max(0,s.wage-d.wage);
 const belowBase=Math.max(0,-d.wage);
 effect(1,(d.wage-s.wage)*(d.wage<s.wage?2.9:1.25)+(d.staff-s.staff)*.28-(e.staff?3:0)-belowBase*.45,d.wage>s.wage?"Höhere Löhne steigern Mitarbeiterzufriedenheit, aber auch Personalkosten.":d.wage<s.wage?"Die Lohnkürzung belastet die Mitarbeiterzufriedenheit stark. Fluktuation und schlechterer Service können in der nächsten Saison Gäste kosten.":null);
 if((wageCut>=2||belowBase>=5)&&game.season<5){
@@ -609,4 +617,4 @@ function showFinal(){
  $("#finalHome").onclick=()=>{sessionStorage.removeItem("alpenmanager_demo");game=null;ends=0;location.href=location.pathname};
 }
 document.addEventListener("DOMContentLoaded",()=>{try{startView()}catch(err){console.error("AlpenManager start failed",err);const app=document.getElementById("app");if(app)app.innerHTML="<section class=\"panel\"><h2>Startfehler</h2><p>Bitte Seite neu laden. Technische Meldung: "+String(err.message)+"</p></section>";}});
-</script><script src="multiplayer.js?v=20261102-balancing-v2"></script></body></html>
+</script><script src="multiplayer.js?v=20261102-balancing-v3"></script></body></html>
