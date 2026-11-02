@@ -28,6 +28,12 @@ Weitere Unterrichtshinweise und Prüfliste: [UNTERRICHT_SETUP.md](UNTERRICHT_SET
 
 Strategische Entscheidungen zu Ticketpreis, Personal, Löhnen, Marketing, Zielgruppe, Wartung, Investitionen und Lieferanten wirken auf Finanzen, Gästezahlen und sieben Anspruchsgruppen. Die Abschlussbewertung gewichtet Wirtschaft zu 40 %, Anspruchsgruppen zu 40 % und Zukunftsfähigkeit zu 20 %. Die lokale Demo im Lehrpersonenbereich ist unabhängig von Supabase.
 
+### Balancing V4: leichte Nachjustierung (November 2026)
+- **Familien:** Der Nachfragebonus des Kinderlands beträgt jetzt höchstens 10 % statt bisher 12 %, abhängig vom Ticketpreis. Preis und Unterhaltskosten der Investition bleiben unverändert.
+- **Sportliche Gäste:** Die Halfpipe steigert die Attraktivität für sportliche Gäste um 18 % statt 14 %. Der Bonus für junge Erwachsene bleibt bei 4 %. Preis und Betriebskosten bleiben unverändert.
+- Alle vier Marktsegmente, Premium-V3-Regeln, die sieben Anspruchsgruppen sowie Investitionskosten und SQL-Schema bleiben gleich. Für V4 ist keine zusätzliche SQL-Migration erforderlich, sofern V2 installiert ist.
+- **Regressionstest:** In 1'200 identischen Dreierpartien mit zufällig zusammengestellten, plausiblen Strategien sank die Familien-Siegquote von 52,3 % auf 49,4 %; Sport stieg von 23,1 % auf 25,2 %. Junge Gäste 32,6 % auf 33,5 %, Premium 26,0 % auf 25,8 %. Die Zielgruppen wurden unterschiedlich oft gezogen, deshalb addieren sich diese bedingten Quoten nicht zu 100 %.
+
 ### Balancing V3: Premiumpreis und Qualität (November 2026)
 - **Premium-Sweetspot:** CHF 85 bis 90 statt CHF 75 bis 80, sofern Wellness-Lounge, mindestens 55 Mitarbeitende, CHF 160'000 Wartung und Infrastrukturqualität von mindestens 70 Punkten vorhanden sind.
 - Passende Premiumpreise stärken die Attraktivität moderat und ermöglichen etwas höhere Wellness-/Gastronomie-Nebeneinnahmen; unter CHF 85 passt der Preis weniger gut zum Premiumangebot, über CHF 90 sinkt die Nachfrage deutlich.

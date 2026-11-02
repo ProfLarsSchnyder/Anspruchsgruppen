@@ -324,12 +324,12 @@ function appeal(t,segment,e){
  const sport=segment.name==="Sportliche Gäste"?(1+.04*s.assets.lift+.11*s.assets.snow):1;
  const family=segment.name==="Familien"?(1+.03*s.assets.service+.05*s.assets.snow):1;
  // Spezialinvestitionen für Freestyle und Premium, mit Vorteilen für die jeweilige Zielgruppe.
- const freestyle=segment.name==="Sportliche Gäste"?1+.14*(s.assets.freestyle||0):segment.name==="Junge Erwachsene"?1+.04*(s.assets.freestyle||0):1;
+ const freestyle=segment.name==="Sportliche Gäste"?1+.18*(s.assets.freestyle||0):segment.name==="Junge Erwachsene"?1+.04*(s.assets.freestyle||0):1;
  const wellness=segment.name==="Premiumgäste"?1+.40*(s.assets.wellness||0):1+.04*(s.assets.wellness||0);
  const target=segment.name===d.segment?1+.35*(1-Math.exp(-d.marketing/105000)):1+.055*(1-Math.exp(-d.marketing/130000));
  const brand=clamp(.88+s.stake[6]/600,.88,1.06);
  // Teure Familientickets schwächen die zusätzliche Anziehungskraft des Kinderlands.
- const familyPark=segment.name==="Familien"?1+(.12-.03*clamp((d.price-65)/10,0,1))*(s.assets.family||0):1;
+ const familyPark=segment.name==="Familien"?1+(.10-.03*clamp((d.price-65)/10,0,1))*(s.assets.family||0):1;
  const staffHousing=1+.065*(s.assets.staffHome||0);
  const transport=(segment.name==="Familien"||segment.name==="Junge Erwachsene"?1.10:1.04)**(s.assets.shuttle||0);
  const booking=(segment.name==="Junge Erwachsene"?1.13:segment.name==="Premiumgäste"?1.09:1.035)**(s.assets.digital||0);
@@ -617,4 +617,4 @@ function showFinal(){
  $("#finalHome").onclick=()=>{sessionStorage.removeItem("alpenmanager_demo");game=null;ends=0;location.href=location.pathname};
 }
 document.addEventListener("DOMContentLoaded",()=>{try{startView()}catch(err){console.error("AlpenManager start failed",err);const app=document.getElementById("app");if(app)app.innerHTML="<section class=\"panel\"><h2>Startfehler</h2><p>Bitte Seite neu laden. Technische Meldung: "+String(err.message)+"</p></section>";}});
-</script><script src="multiplayer.js?v=20261102-balancing-v3"></script></body></html>
+</script><script src="multiplayer.js?v=20261102-balancing-v4"></script></body></html>
