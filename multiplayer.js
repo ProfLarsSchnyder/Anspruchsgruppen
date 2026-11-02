@@ -504,7 +504,7 @@
     const strategies=[
       {price:65,staff:65,wage:2,marketing:150000,maintenance:225000,segment:"Familien",supplier:"zuverlässig",invest:["family","lift","digital","service","none"]},
       {price:75,staff:55,wage:3,marketing:125000,maintenance:250000,segment:"Junge Erwachsene",supplier:"nachhaltig",invest:["eco","shuttle","staffHome","digital","none"]},
-      {price:70,staff:60,wage:0,marketing:100000,maintenance:200000,segment:"Sportliche Gäste",supplier:"zuverlässig",invest:["lift","snow","service","eco","none"]}
+      {price:70,staff:60,wage:0,marketing:100000,maintenance:200000,segment:"Sportliche Gäste",supplier:"zuverlässig",invest:["freestyle","snow","service","eco","none"]}
     ];
     try{
       game=newGame(["Alpenblick","Schneeglück","Bergzauber"]);

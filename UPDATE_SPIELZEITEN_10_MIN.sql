@@ -102,7 +102,7 @@ begin
  or v_marketing not between 0 and 300000 or v_maintenance not between 50000 and 350000
  or p_choice->>'segment' not in ('Familien','Junge Erwachsene','Sportliche Gäste','Premiumgäste')
  or p_choice->>'supplier' not in ('günstig','zuverlässig','nachhaltig')
- or v_invest not in ('none','lift','snow','eco','service','family','staffHome','shuttle','digital')
+ or v_invest not in ('none','lift','snow','eco','service','family','staffHome','shuttle','digital','freestyle','wellness')
  then raise exception 'Entscheidungen ausserhalb der erlaubten Grenzen'; end if;
  if v_invest<>'none' and coalesce((v_team.state->'assets'->>v_invest)::integer,0)>0
  then raise exception 'Diese Investition wurde bereits gekauft'; end if;

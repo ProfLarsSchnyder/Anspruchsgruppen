@@ -3,7 +3,7 @@
 ## Einmaliges Supabase-Setup
 1. Supabase-Projekt `xvgbisxwptnfupibcbpg` öffnen und links **SQL Editor → New query** wählen.
 2. **Cron aktivieren:** Unter **Integrations → Cron** die Erweiterung `pg_cron` im Supabase-Dashboard einschalten. Nicht versuchen, sie über ein eigenes `CREATE EXTENSION` in die Spiel-SQL-Datei einzubauen, da das auf manchen Projekten den Berechtigungsfehler `2BP01` auslösen kann.
-3. **Neue Datenbank:** `supabase_setup.sql` vollständig im SQL Editor ausführen. **Bereits eingerichtete Datenbank:** Nur die neueste Datei `UPDATE_SPIELZEITEN_10_MIN.sql` vollständig ausführen. Frühere SQL-Updates nicht anschliessend erneut ausführen. Die bisherigen Spielstände und Tabellen bleiben erhalten.
+3. **Neue Datenbank:** `supabase_setup.sql` vollständig im SQL Editor ausführen. **Bereits eingerichtete Datenbank:** Wenn `UPDATE_SPIELZEITEN_10_MIN.sql` bereits installiert ist, nur `UPDATE_BALANCING_V2.sql` ausführen. Ansonsten zuerst `UPDATE_SPIELZEITEN_10_MIN.sql` und danach `UPDATE_BALANCING_V2.sql` ausführen. Frühere SQL-Zwischenupdates nicht anschliessend erneut ausführen. Die bisherigen Spielstände und Tabellen bleiben erhalten.
 4. Der Publishable Key und die Supabase-Adresse sind bereits in `multiplayer.js` hinterlegt. Niemals geheime API-Schlüssel ins GitHub-Repository einfügen.
 5. Online-Version öffnen: https://proflarsschnyder.github.io/Anspruchsgruppen/
 
@@ -43,5 +43,6 @@
 - Alle drei Skigebiete sind auf unterschiedlichen Geräten beigetreten.
 - Gleicher Countdown auf allen Geräten, automatische Sperre nach Zeitablauf, aber **keine automatische Auswertung**. Der Lehrerbutton ist erst nach drei gespeicherten Entscheidungen oder nach Ablauf der jeweiligen Strategiezeit aktiv.
 - Saisonergebnisse und Schlussrangliste stimmen auf allen Geräten überein.
+- Balancing V2: Freestyle-Park und Wellness-Lounge können gespeichert werden (nach `UPDATE_BALANCING_V2.sql`).
 - In Supabase unter Integrations → Cron prüfen, ob `alpenmanager-inaktive-spiele` aktiv ist. Falls Cron erst nach dem SQL-Update aktiviert wurde, die SQL-Datei nochmals ausführen, um den Job anzulegen. Solange der Job fehlt, funktioniert die Bereinigung bei geschlossenen Browsern noch nicht.
 - Für einen kurzen Funktionstest kann in einem **separaten Testspiel** ein Raum zehn Minuten unbedient bleiben. Anschliessend höchstens eine weitere Minute für den Cron-Lauf einplanen. Nicht mit einer echten Unterrichtspartie testen.
